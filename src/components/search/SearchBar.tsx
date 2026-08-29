@@ -25,7 +25,7 @@ export function SearchBar({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label="Search the family directory"
-        className="h-14 w-full rounded-full border border-[var(--color-border)] bg-[var(--color-card)] pr-12 pl-12 text-base text-[var(--color-foreground)] placeholder:text-[var(--color-muted-foreground)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)]"
+        className="glass h-14 w-full rounded-full pr-12 pl-12 text-base text-[var(--color-foreground)] placeholder:text-[var(--color-muted-foreground)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)]"
       />
       {value && (
         <button

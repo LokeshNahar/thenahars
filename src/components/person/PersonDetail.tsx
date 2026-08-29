@@ -43,7 +43,7 @@ export function PersonDetail({ person, parents, spouses, offspring }: PersonDeta
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="flex flex-col gap-10"
     >
-      <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
+      <div className="glass-strong flex flex-col items-center gap-4 rounded-3xl p-8 text-center sm:flex-row sm:items-start sm:p-10 sm:text-left">
         <PersonAvatar person={person} size="lg" />
         <div className="flex flex-col items-center gap-2 sm:items-start">
           <h1 className="font-[var(--font-heading)] text-3xl font-bold text-[var(--color-foreground)]">

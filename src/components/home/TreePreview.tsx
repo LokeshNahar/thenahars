@@ -20,7 +20,7 @@ export function TreePreview({ people }: TreePreviewProps) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.5 }}
-        className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-8 sm:p-12"
+        className="glass-strong rounded-3xl p-8 sm:p-12"
       >
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
           <h2 className="font-[var(--font-heading)] text-2xl font-semibold text-[var(--color-card-foreground)] sm:text-3xl">

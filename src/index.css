@@ -8,6 +8,7 @@
   --color-primary-foreground: #fafaf9;
   --color-secondary: #44403c;
   --color-accent: #a16207;
+  --color-accent-2: #d97706;
   --color-accent-foreground: #fafaf9;
   --color-background: #fafaf9;
   --color-foreground: #0c0a09;
@@ -19,6 +20,18 @@
   --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
   --color-ring: #a16207;
+
+  /* Glass surfaces */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(28, 25, 23, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.6);
+  --glass-blur: 20px;
+
+  /* Elevation */
+  --shadow-ambient: 0 2px 8px rgba(28, 25, 23, 0.04), 0 12px 32px rgba(28, 25, 23, 0.06);
+  --shadow-elevated: 0 4px 16px rgba(28, 25, 23, 0.08), 0 24px 48px rgba(28, 25, 23, 0.1);
+  --shadow-glow: 0 0 0 1px rgba(161, 98, 7, 0.15), 0 8px 24px rgba(161, 98, 7, 0.12);
 }
 
 :root:not([data-theme='light']) {
@@ -27,8 +40,9 @@
     --color-primary-foreground: #1c1917;
     --color-secondary: #d6d3d1;
     --color-accent: #c88a1a;
+    --color-accent-2: #e2a53a;
     --color-accent-foreground: #0c0a09;
-    --color-background: #0c0a09;
+    --color-background: #080706;
     --color-foreground: #fafaf9;
     --color-card: #1c1917;
     --color-card-foreground: #fafaf9;
@@ -36,6 +50,15 @@
     --color-muted-foreground: #a8a29e;
     --color-border: #44403c;
     --color-ring: #c88a1a;
+
+    --glass-bg: rgba(28, 25, 23, 0.5);
+    --glass-bg-strong: rgba(28, 25, 23, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-highlight: rgba(255, 255, 255, 0.06);
+
+    --shadow-ambient: 0 2px 8px rgba(0, 0, 0, 0.25), 0 12px 32px rgba(0, 0, 0, 0.35);
+    --shadow-elevated: 0 4px 20px rgba(0, 0, 0, 0.4), 0 32px 64px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 0 1px rgba(200, 138, 26, 0.25), 0 8px 32px rgba(200, 138, 26, 0.2);
   }
 }
 
@@ -44,8 +67,9 @@
   --color-primary-foreground: #1c1917;
   --color-secondary: #d6d3d1;
   --color-accent: #c88a1a;
+  --color-accent-2: #e2a53a;
   --color-accent-foreground: #0c0a09;
-  --color-background: #0c0a09;
+  --color-background: #080706;
   --color-foreground: #fafaf9;
   --color-card: #1c1917;
   --color-card-foreground: #fafaf9;
@@ -53,6 +77,15 @@
   --color-muted-foreground: #a8a29e;
   --color-border: #44403c;
   --color-ring: #c88a1a;
+
+  --glass-bg: rgba(28, 25, 23, 0.5);
+  --glass-bg-strong: rgba(28, 25, 23, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+
+  --shadow-ambient: 0 2px 8px rgba(0, 0, 0, 0.25), 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-elevated: 0 4px 20px rgba(0, 0, 0, 0.4), 0 32px 64px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 0 1px rgba(200, 138, 26, 0.25), 0 8px 32px rgba(200, 138, 26, 0.2);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -83,4 +116,80 @@ h4 {
 ::selection {
   background-color: var(--color-accent);
   color: var(--color-accent-foreground);
+}
+
+/* Glass surface utility */
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--shadow-ambient);
+}
+
+.glass-strong {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--shadow-elevated);
+}
+
+/* Ambient drifting mesh background, used behind hero/glass sections */
+.mesh-glow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mesh-glow::before,
+.mesh-glow::after {
+  content: '';
+  position: absolute;
+  width: 60vw;
+  height: 60vw;
+  max-width: 720px;
+  max-height: 720px;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.35;
+  animation: drift 22s ease-in-out infinite alternate;
+}
+
+.mesh-glow::before {
+  top: -10%;
+  left: -10%;
+  background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+}
+
+.mesh-glow::after {
+  bottom: -15%;
+  right: -10%;
+  background: radial-gradient(circle, var(--color-accent-2) 0%, transparent 70%);
+  animation-delay: -8s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mesh-glow::before,
+  .mesh-glow::after {
+    animation: none;
+  }
+}
+
+@keyframes drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(6%, 8%) scale(1.08);
+  }
+  100% {
+    transform: translate(-4%, -6%) scale(0.96);
+  }
 }

@@ -16,11 +16,13 @@ function TreeEdgeBase({ fromX, fromY, toX, toY }: TreeEdgeProps) {
     <motion.path
       d={path}
       fill="none"
-      stroke="var(--color-border)"
+      stroke="url(#tree-edge-gradient)"
       strokeWidth={2}
+      strokeLinecap="round"
       initial={{ pathLength: 0, opacity: 0 }}
       animate={{ pathLength: 1, opacity: 1 }}
-      transition={{ duration: 0.45, ease: 'easeOut' }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
     />
   )
 }

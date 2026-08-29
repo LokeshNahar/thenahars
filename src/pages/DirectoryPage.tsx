@@ -1,4 +1,6 @@
+import { motion } from 'framer-motion'
 import { useMemo, useState } from 'react'
+import { PersonCard } from '../components/person/PersonCard'
 import { SearchBar } from '../components/search/SearchBar'
 import { SearchEmptyState } from '../components/search/SearchEmptyState'
 import { SearchResults } from '../components/search/SearchResults'
@@ -6,7 +8,6 @@ import { isPlaceholder } from '../data/schema'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { usePeople } from '../hooks/usePeople'
 import { searchPeople } from '../lib/search'
-import { PersonCard } from '../components/person/PersonCard'
 
 export function DirectoryPage() {
   const { people, loading } = usePeople()
@@ -20,18 +21,28 @@ export function DirectoryPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      <div className="mb-10 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-10 text-center"
+      >
         <h1 className="font-[var(--font-heading)] text-4xl font-bold text-[var(--color-foreground)]">
           Family Directory
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-[var(--color-muted-foreground)]">
           Find any family member by name, profession, or location.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="mx-auto mb-12 max-w-xl">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="mx-auto mb-12 max-w-xl"
+      >
         <SearchBar value={query} onChange={setQuery} />
-      </div>
+      </motion.div>
 
       {loading ? (
         <p className="text-center text-[var(--color-muted-foreground)]">Loading directory…</p>
@@ -43,8 +54,15 @@ export function DirectoryPage() {
         )
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {allMembers.map((person) => (
-            <PersonCard key={person.nahar_id} person={person} />
+          {allMembers.map((person, i) => (
+            <motion.div
+              key={person.nahar_id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: Math.min(i, 7) * 0.04, ease: 'easeOut' }}
+            >
+              <PersonCard person={person} />
+            </motion.div>
           ))}
         </div>
       )}

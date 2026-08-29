@@ -4,9 +4,10 @@ import { AppRoutes } from './router/routes'
 
 function App() {
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
+    <div className="relative flex min-h-screen flex-col overflow-x-clip bg-[var(--color-background)]">
+      <div className="mesh-glow" aria-hidden="true" />
       <Navbar />
-      <main className="flex-1">
+      <main className="relative z-10 flex-1">
         <AppRoutes />
       </main>
       <Footer />

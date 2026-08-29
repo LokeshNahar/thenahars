@@ -1,13 +1,30 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Briefcase, MapPin } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { isPlaceholder, type Person } from '../../data/schema'
 import { PersonAvatar } from '../person/PersonAvatar'
 import { StatusBadge } from '../person/StatusBadge'
 
-export function PersonPreviewPopover({ person, visible }: { person: Person; visible: boolean }) {
-  if (isPlaceholder(person)) return null
+interface PersonPreviewPopoverProps {
+  person: Person
+  visible: boolean
+  /** Screen-space anchor (from getBoundingClientRect) — required so the popover
+   * renders at a fixed, un-scaled size regardless of the tree canvas's zoom level. */
+  anchorRect: { top: number; left: number; width: number } | null
+}
 
-  return (
+/**
+ * Rendered via a portal into document.body rather than inline in the tree.
+ * The tree canvas is inside a pan/zoom transform (react-zoom-pan-pinch), and
+ * anything rendered as a normal descendant gets scaled along with it — at
+ * high zoom a fixed-width popover would balloon to several times its
+ * intended size. Portaling out and positioning with `position: fixed` from
+ * the anchor's real screen rect keeps it crisp and correctly sized always.
+ */
+export function PersonPreviewPopover({ person, visible, anchorRect }: PersonPreviewPopoverProps) {
+  if (isPlaceholder(person) || !anchorRect) return null
+
+  return createPortal(
     <AnimatePresence>
       {visible && (
         <motion.div
@@ -15,7 +32,12 @@ export function PersonPreviewPopover({ person, visible }: { person: Person; visi
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.95 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="glass-strong pointer-events-none absolute bottom-full left-1/2 z-30 mb-3 w-56 -translate-x-1/2 rounded-2xl p-4 text-left"
+          className="glass-strong pointer-events-none fixed z-50 w-56 rounded-2xl p-4 text-left"
+          style={{
+            top: anchorRect.top - 12,
+            left: anchorRect.left + anchorRect.width / 2,
+            transform: 'translate(-50%, -100%)',
+          }}
         >
           <div className="flex items-center gap-3">
             <PersonAvatar person={person} size="sm" />
@@ -44,6 +66,7 @@ export function PersonPreviewPopover({ person, visible }: { person: Person; visi
           )}
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

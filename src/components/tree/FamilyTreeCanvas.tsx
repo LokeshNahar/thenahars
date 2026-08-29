@@ -65,7 +65,14 @@ export function FamilyTreeCanvas({ people }: FamilyTreeCanvasProps) {
 
   return (
     <div className="glass relative h-[75vh] w-full overflow-hidden rounded-3xl">
-      <div className="mesh-glow" aria-hidden="true" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-20"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 45%, var(--color-background) 115%)',
+          opacity: 0.6,
+        }}
+      />
       <TransformWrapper
         ref={transformRef}
         minScale={0.25}
@@ -77,25 +84,37 @@ export function FamilyTreeCanvas({ people }: FamilyTreeCanvasProps) {
         <TreeControls />
         <MiniMap
           width={140}
-          borderColor="var(--glass-border)"
-          wrapperClassName="!bg-[var(--glass-bg-strong)] !border-[var(--glass-border)] !rounded-xl !overflow-hidden !shadow-[var(--shadow-elevated)]"
-          previewClassName="!border-[var(--color-accent)]"
+          height={100}
+          borderColor="var(--color-accent)"
+          wrapperClassName="!overflow-hidden !rounded-xl !border !border-[var(--glass-border)] !bg-[var(--glass-bg-strong)] !shadow-[var(--shadow-elevated)]"
+          previewStyle={{
+            borderWidth: 2,
+            borderStyle: 'solid',
+            borderRadius: 4,
+            boxShadow: 'none',
+          }}
         >
-          <TreeStatic positioned={positioned} byIdMap={byIdMap} width={width} height={height} offsetX={offsetX} />
+          <TreeStatic
+            positioned={positioned}
+            byIdMap={byIdMap}
+            width={width}
+            height={height}
+            offsetX={offsetX}
+          />
         </MiniMap>
-        <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
+        <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} infinite>
           <div ref={contentRef} className="relative" style={{ width, height }}>
             <svg className="absolute top-0 left-0" width={width} height={height} aria-hidden="true">
               <defs>
                 <linearGradient id="tree-edge-gradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.7" />
-                  <stop offset="100%" stopColor="var(--color-border)" stopOpacity="0.7" />
+                  <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="var(--color-border)" stopOpacity="0.6" />
                 </linearGradient>
               </defs>
               <AnimatePresence>
                 {positioned
                   .filter((p) => p.parentId)
-                  .map((p) => {
+                  .map((p, i) => {
                     const parent = byIdMap.get(p.parentId!)
                     if (!parent) return null
                     return (
@@ -105,6 +124,7 @@ export function FamilyTreeCanvas({ people }: FamilyTreeCanvasProps) {
                         fromY={parent.y + 24}
                         toX={p.x + offsetX}
                         toY={p.y - 24}
+                        delay={Math.min(i, 7) * 0.05}
                       />
                     )
                   })}

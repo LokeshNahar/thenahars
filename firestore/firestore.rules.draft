@@ -1,0 +1,73 @@
+// DRAFT — NOT DEPLOYED. No Firebase project is wired up yet (see src/lib/firebase.ts).
+// This documents the intended Phase 2 permission model so implementation
+// doesn't start from scratch once real Firestore + Auth are turned on.
+//
+// Model:
+//   - Every document in `people/{naharId}` mirrors the Person shape in
+//     src/data/schema.ts.
+//   - Anyone (including signed-out visitors) can read the directory.
+//   - A signed-in member (matched by Google Auth email == people.email) may
+//     write to:
+//       - their own record
+//       - their parents' records (person.nahar_id in resource.data.children...
+//         i.e. the reverse: requester's naharId appears in the target's children)
+//       - their spouse's record (requester's naharId in target's spouse array)
+//       - their children's records (requester's naharId in target's parents array)
+//   - role == "admin" may write to any record.
+//   - `nahar_id`, `claimed`, and `role` are never client-writable — only a
+//     trusted backend/admin path can change identity, verification status,
+//     or elevate roles.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedInEmail() {
+      return request.auth != null ? request.auth.token.email : null;
+    }
+
+    function callerPerson() {
+      // The Person doc whose email matches the signed-in Google account.
+      return get(/databases/$(database)/documents/people/
+        (
+          // Firestore rules can't do arbitrary queries — in practice this
+          // lookup is done via a denormalized `people_by_email/{email}` doc
+          // (email -> nahar_id) maintained by a Cloud Function on write,
+          // rather than a query here. Left as a placeholder for Phase 2.
+        )
+      ).data;
+    }
+
+    function isAdmin() {
+      return signedInEmail() != null && callerPerson().role == 'admin';
+    }
+
+    function isSelf(targetId) {
+      return signedInEmail() != null && callerPerson().nahar_id == targetId;
+    }
+
+    function isImmediateRelative(target) {
+      let me = callerPerson();
+      return me != null && (
+        target.nahar_id in me.spouse ||
+        me.nahar_id in target.spouse ||
+        me.nahar_id in target.parents ||   // target is my child
+        target.nahar_id in me.parents      // target is my parent
+      );
+    }
+
+    function onlyEditableFieldsChanged() {
+      let locked = ['nahar_id', 'claimed', 'role'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasNone(locked);
+    }
+
+    match /people/{naharId} {
+      allow read: if true;
+
+      allow write: if signedInEmail() != null
+        && onlyEditableFieldsChanged()
+        && (isAdmin() || isSelf(naharId) || isImmediateRelative(resource.data));
+    }
+  }
+}

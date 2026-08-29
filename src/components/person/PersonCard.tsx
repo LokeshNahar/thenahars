@@ -1,0 +1,76 @@
+import { Briefcase, MapPin } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { isPlaceholder, type Person } from '../../data/schema'
+import { PersonAvatar } from './PersonAvatar'
+import { StatusBadge } from './StatusBadge'
+
+interface PersonCardProps {
+  person: Person
+  highlight?: string
+}
+
+function HighlightedText({ text, query }: { text: string; query?: string }) {
+  if (!query) return <>{text}</>
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="rounded-sm bg-[var(--color-accent)]/25 text-inherit">
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  )
+}
+
+export function PersonCard({ person, highlight }: PersonCardProps) {
+  const placeholder = isPlaceholder(person)
+
+  const content = (
+    <div
+      className={`flex h-full flex-col items-center gap-3 rounded-2xl border p-5 text-center transition-all duration-200 ${
+        placeholder
+          ? 'border-dashed border-[var(--color-border)] bg-transparent'
+          : 'border-[var(--color-border)] bg-[var(--color-card)] hover:-translate-y-0.5 hover:shadow-lg'
+      }`}
+    >
+      <PersonAvatar person={person} size="md" />
+      <div className="flex flex-col items-center gap-1">
+        <p
+          className={`font-[var(--font-heading)] text-base font-semibold ${
+            placeholder
+              ? 'text-[var(--color-muted-foreground)] italic'
+              : 'text-[var(--color-card-foreground)]'
+          }`}
+        >
+          <HighlightedText text={person.name} query={highlight} />
+        </p>
+        {person.profession && (
+          <p className="flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
+            <Briefcase size={12} aria-hidden="true" />
+            <HighlightedText text={person.profession} query={highlight} />
+          </p>
+        )}
+        {person.location && (
+          <p className="flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
+            <MapPin size={12} aria-hidden="true" />
+            <HighlightedText text={person.location} query={highlight} />
+          </p>
+        )}
+      </div>
+      <StatusBadge status={person.status} />
+    </div>
+  )
+
+  if (placeholder) return content
+
+  return (
+    <Link
+      to={`/person/${person.nahar_id}`}
+      className="block h-full rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)]"
+    >
+      {content}
+    </Link>
+  )
+}

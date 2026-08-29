@@ -1,0 +1,86 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --color-primary: #1c1917;
+  --color-primary-foreground: #fafaf9;
+  --color-secondary: #44403c;
+  --color-accent: #a16207;
+  --color-accent-foreground: #fafaf9;
+  --color-background: #fafaf9;
+  --color-foreground: #0c0a09;
+  --color-card: #ffffff;
+  --color-card-foreground: #0c0a09;
+  --color-muted: #e8ecf0;
+  --color-muted-foreground: #475569;
+  --color-border: #d6d3d1;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-ring: #a16207;
+}
+
+:root:not([data-theme='light']) {
+  @media (prefers-color-scheme: dark) {
+    --color-primary: #fafaf9;
+    --color-primary-foreground: #1c1917;
+    --color-secondary: #d6d3d1;
+    --color-accent: #c88a1a;
+    --color-accent-foreground: #0c0a09;
+    --color-background: #0c0a09;
+    --color-foreground: #fafaf9;
+    --color-card: #1c1917;
+    --color-card-foreground: #fafaf9;
+    --color-muted: #292524;
+    --color-muted-foreground: #a8a29e;
+    --color-border: #44403c;
+    --color-ring: #c88a1a;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-primary: #fafaf9;
+  --color-primary-foreground: #1c1917;
+  --color-secondary: #d6d3d1;
+  --color-accent: #c88a1a;
+  --color-accent-foreground: #0c0a09;
+  --color-background: #0c0a09;
+  --color-foreground: #fafaf9;
+  --color-card: #1c1917;
+  --color-card-foreground: #fafaf9;
+  --color-muted: #292524;
+  --color-muted-foreground: #a8a29e;
+  --color-border: #44403c;
+  --color-ring: #c88a1a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+}
+
+::selection {
+  background-color: var(--color-accent);
+  color: var(--color-accent-foreground);
+}

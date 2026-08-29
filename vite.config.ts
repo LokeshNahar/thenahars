@@ -7,4 +7,17 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: '/thenahars/',
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Isolated so only the Home route (which lazy-loads LionHeroSection)
+        // ever pays for Three.js — other routes never pull this chunk in.
+        manualChunks(id: string) {
+          if (id.includes('node_modules/three') || id.includes('node_modules/@react-three')) {
+            return 'three'
+          }
+        },
+      },
+    },
+  },
 })

@@ -21,7 +21,7 @@ export function Hero() {
   return (
     <section
       onPointerMove={onPointerMove}
-      className="relative mx-auto flex max-w-4xl flex-col items-center overflow-hidden px-4 py-24 text-center sm:px-6 sm:py-32"
+      className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-24 text-center sm:px-6 sm:py-32"
     >
       <motion.div
         aria-hidden="true"
@@ -54,8 +54,7 @@ export function Hero() {
         transition={{ duration: 0.5, delay: 0.25 }}
         className="relative z-10 mt-5 max-w-xl text-lg text-[var(--color-muted-foreground)]"
       >
-        A living record of our family — every branch, every generation — kept together in one
-        place.
+        A living record of our family — every branch, every generation — kept together in one place.
       </motion.p>
 
       <motion.div

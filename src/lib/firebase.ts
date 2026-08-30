@@ -15,11 +15,25 @@ const firebaseConfig = {
 }
 
 /**
- * Phase 1: Firebase is intentionally inert. Nothing in this file runs unless
- * VITE_USE_FIREBASE=true and real config is supplied via .env.local — until
- * then app/auth/db/storage are all null and safe to import anywhere.
+ * Firebase is intentionally inert unless VITE_USE_FIREBASE=true and real
+ * config is supplied via .env.local — until then app/auth/db/storage are
+ * all null and safe to import anywhere.
+ *
+ * storage is separately optional: Storage requires the Blaze plan and
+ * isn't provisioned on any environment yet (no upload UI needs it), so
+ * getStorage() is wrapped — an unprovisioned bucket can throw, and that
+ * must not take down auth/db, which are both needed and Spark-plan-free.
  */
 export const app: FirebaseApp | null = useFirebase ? initializeApp(firebaseConfig) : null
 export const auth: Auth | null = app ? getAuth(app) : null
 export const db: Firestore | null = app ? getFirestore(app) : null
-export const storage: FirebaseStorage | null = app ? getStorage(app) : null
+
+let storageInstance: FirebaseStorage | null = null
+if (app) {
+  try {
+    storageInstance = getStorage(app)
+  } catch {
+    storageInstance = null
+  }
+}
+export const storage: FirebaseStorage | null = storageInstance

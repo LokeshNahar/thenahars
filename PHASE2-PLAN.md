@@ -9,7 +9,8 @@ Phase 1 shipped a static, read-only family tree + directory. Phase 2 adds real G
 ## Environments
 
 - **Branches**: `dev` → `uat` → `main` (all created, pushed). Only `main` deploys (GitHub Pages, existing workflow). `dev`/`uat` are tested via `npm run dev` locally with branch-specific `.env.local` files (gitignored, never committed).
-- **Firebase projects**: three fully separate projects — `thenahars-dev`, `thenahars-uat`, `thenahars-prod`. Each has its own Auth users, Firestore data, Storage. No shared quota.
+- **Firebase projects**: three fully separate projects — `thenahars-dev`, `thenahars-uat`, `thenahars-prod`. Each has its own Auth users and Firestore data. No shared quota.
+- **Storage: skipped for now.** Firebase Storage requires the Blaze (pay-as-you-go) plan on new projects, and `photo` is currently just a URL/path string field with no upload UI planned this phase — so there's nothing Storage would be used for yet. Revisit only if/when photo uploads become a real feature; Auth + Firestore alone cover everything in this plan and both stay on the free Spark plan.
 - **Env vars** (unchanged from existing `src/lib/firebase.ts` reads): `VITE_USE_FIREBASE`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`. `dev`/`uat` set these in a local `.env.local`; `main`'s deploy workflow injects them from 6 GitHub Actions secrets at build time (Vite inlines `import.meta.env.*` at build, so the file only needs to exist during `npm run build` in CI).
 
 ## Firebase project setup (manual, user performs — 3x, once per project)
@@ -17,9 +18,9 @@ Phase 1 shipped a static, read-only family tree + directory. Phase 2 adds real G
 1. Firebase Console → Add project → disable Analytics → Create.
 2. Authentication → Sign-in method → enable **Google** provider, set support email.
 3. Authentication → Settings → Authorized domains → `localhost` (default); for `thenahars-prod` also add the GitHub Pages domain now and `thenahars.in` later.
-4. Firestore Database → Create → **production mode** → pick one region (recommend `asia-south1`, same across all 3 projects — can't change later).
-5. Storage → Get started → production mode → same region.
-6. Project Settings → General → Add app → Web → copy the 6 config values into that environment's `.env.local` / GitHub secrets.
+4. Firestore Database → Create → **Standard edition** (not Enterprise — no need for MongoDB-style pipelines/aggregations here, and the edition can't be changed after creation) → **production mode** → pick one region (recommend `asia-south1`, same across all 3 projects — can't change later).
+5. Skip Storage — not needed this phase (see Environments section above).
+6. Project Settings → General → Add app → Web → copy the config values into that environment's `.env.local` / GitHub secrets. `VITE_FIREBASE_STORAGE_BUCKET` can be left blank/omitted since Storage isn't provisioned; `src/lib/firebase.ts` already only calls `getStorage()` conditionally.
 7. No manual Firestore indexes needed — the data model below avoids queries that require them.
 
 ## Data model

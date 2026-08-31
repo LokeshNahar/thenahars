@@ -1,25 +1,37 @@
-// Deployed rules. See PHASE2-PLAN.md for the full design rationale.
+// Deployed rules. See PHASE2-PLAN.md and PHASE2-ADD-PERSON-PLAN.md for the
+// full design rationale.
 //
 // Model:
 //   - `people/{naharId}` mirrors the Person shape in src/data/schema.ts.
 //   - `people_by_email/{emailLowercased}` is a denormalized lookup doc
-//     `{ nahar_id }`, kept in sync by the app itself (writeBatch) whenever
-//     a person's email changes — no Cloud Function. The rules below make
-//     sure a client can only ever point this lookup at a nahar_id it's
-//     already authorized to edit, so it can't be forged to hijack someone
-//     else's identity.
+//     `{ nahar_id }`, kept in sync by the app itself (writeBatch/transaction)
+//     whenever a person's email changes or a new person is created — no
+//     Cloud Function. Writes are validated so a client can't forge a
+//     lookup pointing at someone else's identity.
+//   - `meta/id_counter` reserves collision-safe sequential "N-00xx" ids via
+//     a client-side Firestore transaction.
 //   - Anyone (including signed-out visitors) can read the directory.
 //   - A signed-in member may write PERSONAL fields only (name, phone,
 //     email, profession, qualification, location, photo, instagram,
-//     facebook, linkedin, status, notes) on:
-//       - their own record
-//       - their parents' / spouse's / children's records
+//     facebook, linkedin, status, notes) on: their own record, their
+//     parents'/spouse's/children's records, or the root of a linked
+//     external family they connect through (linkedFamilyOf == their id).
+//   - A signed-in member may CREATE a new person anchored on anyone they
+//     can already edit (self/immediate relative/linked-family root) —
+//     claiming exactly one relationship (parent, spouse, or child) to that
+//     anchor, or creating a linked-family root off that anchor. This is
+//     how arbitrarily deep chains (grandchild, great-grandchild, a child's
+//     spouse, a sibling via a shared parent's page, ...) stay correct
+//     without recursion in rules: each addition is anchored on the actual
+//     intermediate person's own record.
+//   - A signed-in member may then splice that brand-new person into their
+//     own (or the anchor's) parents/spouse/children array — but ONLY as a
+//     single addition of a person whose addedBy is themself, never a
+//     re-link of two pre-existing people. Re-linking existing people, and
+//     any other relationship-array change, stays admin-only.
 //   - role == "admin" may write anything on any record, including the
 //     relationship arrays (parents/spouse/children), nahar_id, claimed,
-//     and role itself.
-//   - Relationship editing is intentionally admin-only for everyone else —
-//     a wrong phone number is a small mistake, a corrupted parents/children
-//     link breaks the tree structure for everyone.
+//     role, and can create/delete freely.
 
 rules_version = '2';
 
@@ -55,7 +67,12 @@ service cloud.firestore {
         target.nahar_id in me.spouse ||
         me.nahar_id in target.spouse ||
         me.nahar_id in target.parents ||   // target is my child
-        target.nahar_id in me.parents      // target is my parent
+        target.nahar_id in me.parents ||   // target is my parent
+        // target is the root of a linked external family I connect through
+        // (e.g. my own mother's birth family) — grants management rights
+        // over that whole branch to the connecting person and anyone who
+        // can already edit them.
+        target.linkedFamilyOf == me.nahar_id
       );
     }
 
@@ -70,13 +87,143 @@ service cloud.firestore {
       ]);
     }
 
+    // Baseline shape every non-admin-created person must satisfy, regardless
+    // of which relationship is being claimed below.
+    function newPersonBaseShapeIsValid(naharId, data) {
+      let me = callerPerson();
+      return me != null
+        && data.nahar_id == naharId
+        && data.role == 'member'
+        && data.claimed == false
+        && data.addedBy == me.nahar_id
+        && data.addedAt == request.time;
+    }
+
+    // Case: caller adds THEIR OWN parent (or a relative-they-can-edit's
+    // parent — e.g. their spouse's parent). New person's `children` must
+    // contain the anchor's id; no spouse/other children claimed yet.
+    function newParentIsValid(data) {
+      return data.children.size() == 1
+        && callerIsRelatedToAnchor(data.children[0])
+        && data.parents.size() == 0
+        && data.spouse.size() == 0
+        && data.linkedFamilyOf == null;
+    }
+
+    // Case: caller adds a spouse to themself or any editable relative.
+    function newSpouseIsValid(data) {
+      return data.spouse.size() == 1
+        && callerIsRelatedToAnchor(data.spouse[0])
+        && data.parents.size() == 0
+        && data.children.size() == 0
+        && data.linkedFamilyOf == null;
+    }
+
+    // Case: caller adds a child (or grandchild, by acting from that
+    // child's own page) of themself or any editable relative. Up to two
+    // parents may be listed (co-parent convenience), but at least one
+    // must be an anchor the caller can edit.
+    function newChildIsValid(data) {
+      return data.parents.size() >= 1 && data.parents.size() <= 2
+        && (callerIsRelatedToAnchor(data.parents[0])
+            || (data.parents.size() == 2 && callerIsRelatedToAnchor(data.parents[1])))
+        && data.spouse.size() == 0
+        && data.children.size() == 0
+        && data.linkedFamilyOf == null;
+    }
+
+    // Case: caller creates the root of a linked EXTERNAL family (e.g. their
+    // own mother's birth family), anchored on a person they can already
+    // edit. No relationship arrays — that's the whole point.
+    function newLinkedFamilyRootIsValid(data) {
+      return data.parents.size() == 0
+        && data.spouse.size() == 0
+        && data.children.size() == 0
+        && data.linkedFamilyOf != null
+        && callerIsRelatedToAnchor(data.linkedFamilyOf)
+        && data.linkedFamilyLabel is string
+        && data.linkedFamilyLabel.size() > 0;
+    }
+
+    // True if the caller can already edit the given anchor person — i.e.
+    // the new record's claimed relationship attaches to someone the caller
+    // has real standing over. This is the boundary that makes arbitrarily
+    // deep chains (grandchild, great-grandchild, ...) work correctly: each
+    // addition is anchored on the actual intermediate person's own record,
+    // never jumped in one step.
+    function callerIsRelatedToAnchor(anchorId) {
+      return anchorId != null
+        && exists(/databases/$(database)/documents/people/$(anchorId))
+        && canEditPerson(anchorId, get(/databases/$(database)/documents/people/$(anchorId)).data);
+    }
+
+    // Adds (never removes/reorders) exactly one id to the caller's own
+    // parents/spouse/children array on an existing document — and only if
+    // that id belongs to a person the caller themself just created. This
+    // is what lets a create() be immediately followed by the reverse-link
+    // update without opening a general "re-link any two people" hole,
+    // which stays admin-only.
+    function relationshipAdditionIsValid() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let changed = after.diff(before).affectedKeys();
+      return (
+        (changed.hasOnly(['spouse']) && after.spouse.size() == before.spouse.size() + 1
+          && before.spouse.hasAll(before.spouse) && after.spouse.hasAll(before.spouse)
+          && callerAddedPerson(after.spouse.removeAll(before.spouse)[0]))
+        ||
+        (changed.hasOnly(['children']) && after.children.size() == before.children.size() + 1
+          && after.children.hasAll(before.children)
+          && callerAddedPerson(after.children.removeAll(before.children)[0]))
+        ||
+        (changed.hasOnly(['parents']) && after.parents.size() == before.parents.size() + 1
+          && after.parents.hasAll(before.parents)
+          && callerAddedPerson(after.parents.removeAll(before.parents)[0]))
+      );
+    }
+
+    function callerAddedPerson(personId) {
+      let me = callerPerson();
+      return me != null
+        && exists(/databases/$(database)/documents/people/$(personId))
+        && get(/databases/$(database)/documents/people/$(personId)).data.addedBy == me.nahar_id;
+    }
+
     match /people/{naharId} {
       allow read: if true;
-      allow create: if isAdmin();
+
+      allow create: if isAdmin() || (
+        signedInEmail() != null
+        && newPersonBaseShapeIsValid(naharId, request.resource.data)
+        && (
+          newParentIsValid(request.resource.data) ||
+          newSpouseIsValid(request.resource.data) ||
+          newChildIsValid(request.resource.data) ||
+          newLinkedFamilyRootIsValid(request.resource.data)
+        )
+      );
+
       allow update: if signedInEmail() != null
         && canEditPerson(naharId, resource.data)
-        && (isAdmin() || onlyPersonalFieldsChanged());
+        && (isAdmin() || onlyPersonalFieldsChanged() || relationshipAdditionIsValid());
+
       allow delete: if isAdmin();
+    }
+
+    // Sequential-id reservation counter, incremented inside the same
+    // client-side transaction that creates a new person — guarantees
+    // collision-safe "N-00xx" ids without a Cloud Function. A signed-in
+    // linked member may only ever increment by exactly 1; going backward,
+    // skipping ids, or writing arbitrary values is rejected. A buggy or
+    // malicious client could burn an id without creating a person (ids are
+    // already never reused/renumbered by convention, so this is harmless);
+    // it cannot cause two people to collide on the same id, which is the
+    // actual risk this exists to prevent.
+    match /meta/id_counter {
+      allow read: if true;
+      allow update: if signedInEmail() != null
+        && callerPerson() != null
+        && request.resource.data.nextSeq == resource.data.nextSeq + 1;
     }
 
     match /people_by_email/{email} {
@@ -84,15 +231,23 @@ service cloud.firestore {
       allow write: if signedInEmail() != null && (
         isAdmin() ||
         (
-          // Only allowed to (re)point a lookup at a nahar_id the caller
-          // is already authorized to edit, and never for someone else's
-          // email address.
+          // Case 1: pointing a lookup at MY OWN email — must target a
+          // nahar_id I'm already authorized to edit (self-link, or
+          // relinking after an edit to my own record's email).
           email == signedInEmail() &&
           exists(/databases/$(database)/documents/people/$(request.resource.data.nahar_id)) &&
           canEditPerson(
             request.resource.data.nahar_id,
             get(/databases/$(database)/documents/people/$(request.resource.data.nahar_id)).data
           )
+        ) ||
+        (
+          // Case 2: registering the email lookup for a person I just
+          // created (real or placeholder address) — same trust boundary
+          // as relationshipAdditionIsValid()'s callerAddedPerson check.
+          exists(/databases/$(database)/documents/people/$(request.resource.data.nahar_id)) &&
+          get(/databases/$(database)/documents/people/$(request.resource.data.nahar_id)).data.addedBy
+            == callerPerson().nahar_id
         )
       );
     }

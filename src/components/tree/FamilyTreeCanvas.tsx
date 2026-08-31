@@ -17,6 +17,12 @@ interface FamilyTreeCanvasProps {
   people: Person[]
   /** When set, the tree auto-expands the path to this person and frames them. */
   focusId?: string | null
+  /**
+   * Renders the tree rooted at this person instead of the main Nahar
+   * root — used by the linked-family full-screen takeover view. When
+   * unset, falls back to the normal findRootId() behavior.
+   */
+  rootIdOverride?: string
 }
 
 function framePerson(
@@ -33,8 +39,8 @@ function framePerson(
   }, delayMs)
 }
 
-export function FamilyTreeCanvas({ people, focusId }: FamilyTreeCanvasProps) {
-  const rootId = useMemo(() => findRootId(people), [people])
+export function FamilyTreeCanvas({ people, focusId, rootIdOverride }: FamilyTreeCanvasProps) {
+  const rootId = useMemo(() => rootIdOverride ?? findRootId(people), [people, rootIdOverride])
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>()
     if (rootId) initial.add(rootId)

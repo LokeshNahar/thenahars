@@ -14,6 +14,22 @@ export interface Person {
   /** Spouse(s) by nahar_id — spouses have their own real Person record. */
   spouse: string[]
   children: string[]
+  /** nahar_id of whoever added this record via the app; null for seed/admin-created records. */
+  addedBy: string | null
+  /** Firestore server timestamp of creation via the app; null for seed/admin-created records. */
+  addedAt: unknown
+  /** True only when `email` is a system-generated placeholder, not a real address. */
+  isPlaceholderEmail: boolean
+  /**
+   * Set only on the root of a linked EXTERNAL family (e.g. a mother's own
+   * birth family) — the nahar_id of the existing main-tree person this
+   * branch connects through. Never a parents/spouse/children edge, so the
+   * main tree's traversal (findRootId, buildFamilyUnit) never reaches it —
+   * it's revealed only via a dedicated toggle near the connecting person.
+   */
+  linkedFamilyOf: string | null
+  /** Short label for a linked-family root's toggle/breadcrumb, e.g. "Mother's Family". */
+  linkedFamilyLabel: string | null
   phone: string | null
   email: string | null
   profession: string | null

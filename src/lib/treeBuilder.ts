@@ -59,9 +59,14 @@ export function buildFamilyUnit(
   }
 }
 
-/** Finds the root couple: the earliest-generation person(s) with no parents recorded. */
+/**
+ * Finds the main tree's root couple: the earliest-generation person(s)
+ * with no parents recorded. Explicitly excludes linked-external-family
+ * roots (`linkedFamilyOf` set) — those have empty `parents` too, but must
+ * never be picked as if they were part of the main Nahar lineage.
+ */
 export function findRootId(people: Person[]): string | null {
-  const roots = people.filter((p) => p.parents.length === 0)
+  const roots = people.filter((p) => p.parents.length === 0 && !p.linkedFamilyOf)
   if (roots.length === 0) return null
   const earliest = roots.reduce((min, p) => (p.generation < min.generation ? p : min), roots[0])
   return earliest.nahar_id

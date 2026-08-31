@@ -65,10 +65,13 @@ function RelationSection({
   const { singular, plural } = RELATION_TITLE[relation]
   if (people.length === 0 && !canAdd) return null
 
-  // A person can only have one spouse-add prompt at a time in this UI —
-  // once they have a recorded spouse, adding another isn't offered here
-  // (that's an admin/edge case, not the common flow this form targets).
-  const showAddTile = canAdd && (relation !== 'spouse' || people.length === 0)
+  // Caps on how many of a relation this form offers to add at once — a
+  // person has at most one recorded spouse and exactly two parents in
+  // this UI's common flow (adding a third is an admin/edge case, not
+  // something this self-service tile should invite).
+  const atCap =
+    (relation === 'spouse' && people.length >= 1) || (relation === 'parent' && people.length >= 2)
+  const showAddTile = canAdd && !atCap
 
   return (
     <div>

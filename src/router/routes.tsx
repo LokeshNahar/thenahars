@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import { AboutPage } from '../pages/AboutPage'
+import { AdminPage } from '../pages/AdminPage'
 import { DirectoryPage } from '../pages/DirectoryPage'
 import { FamilyTreePage } from '../pages/FamilyTreePage'
 import { HomePage } from '../pages/HomePage'
@@ -14,6 +15,7 @@ export function AppRoutes() {
       <Route path="/directory" element={<DirectoryPage />} />
       <Route path="/person/:naharId" element={<PersonDetailPage />} />
       <Route path="/about" element={<AboutPage />} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

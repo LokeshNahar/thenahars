@@ -5,7 +5,7 @@ import { usePeople } from '../hooks/usePeople'
 
 export function PersonDetailPage() {
   const { naharId } = useParams<{ naharId: string }>()
-  const { people, loading } = usePeople()
+  const { people, loading, refetch } = usePeople()
 
   const person = useMemo(() => people.find((p) => p.nahar_id === naharId) ?? null, [people, naharId])
   const parents = useMemo(
@@ -42,7 +42,13 @@ export function PersonDetailPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <PersonDetail person={person} parents={parents} spouses={spouses} offspring={offspring} />
+      <PersonDetail
+        person={person}
+        parents={parents}
+        spouses={spouses}
+        offspring={offspring}
+        onSaved={refetch}
+      />
     </div>
   )
 }

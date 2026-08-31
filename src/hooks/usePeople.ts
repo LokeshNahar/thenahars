@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Person } from '../data/schema'
 import { dataSource } from '../lib/dataSource'
 
@@ -6,15 +6,18 @@ interface UsePeopleResult {
   people: Person[]
   loading: boolean
   error: Error | null
+  refetch: () => void
 }
 
 export function usePeople(): UsePeopleResult {
   const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [refetchToken, setRefetchToken] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
     dataSource
       .getAllPeople()
       .then((result) => {
@@ -29,9 +32,11 @@ export function usePeople(): UsePeopleResult {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refetchToken])
 
-  return { people, loading, error }
+  const refetch = useCallback(() => setRefetchToken((t) => t + 1), [])
+
+  return { people, loading, error, refetch }
 }
 
 export function usePerson(id: string | undefined): { person: Person | null; loading: boolean } {

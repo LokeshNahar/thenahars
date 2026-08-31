@@ -1,8 +1,12 @@
-import { motion } from 'framer-motion'
-import { Briefcase, Mail, MapPin, Phone } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Briefcase, Mail, MapPin, Pencil, Phone } from 'lucide-react'
+import { useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
+import { canEditPerson } from '../../lib/permissions'
 import { PersonAvatar } from './PersonAvatar'
 import { PersonCard } from './PersonCard'
+import { PersonEditForm } from './PersonEditForm'
 import { StatusBadge } from './StatusBadge'
 
 interface PersonDetailProps {
@@ -10,13 +14,18 @@ interface PersonDetailProps {
   parents: Person[]
   spouses: Person[]
   offspring: Person[]
+  onSaved: () => void
 }
 
-const FIELD_ROWS: Array<{ key: keyof Person; icon: typeof Phone; label: string }> = [
-  { key: 'phone', icon: Phone, label: 'Phone' },
-  { key: 'email', icon: Mail, label: 'Email' },
+const PUBLIC_FIELD_ROWS: Array<{ key: keyof Person; icon: typeof Phone; label: string }> = [
   { key: 'profession', icon: Briefcase, label: 'Profession' },
   { key: 'location', icon: MapPin, label: 'Location' },
+]
+
+/** Contact details — only shown to signed-in visitors, not public/anonymous browsing. */
+const PRIVATE_FIELD_ROWS: Array<{ key: keyof Person; icon: typeof Phone; label: string }> = [
+  { key: 'phone', icon: Phone, label: 'Phone' },
+  { key: 'email', icon: Mail, label: 'Email' },
 ]
 
 function RelationSection({ title, people }: { title: string; people: Person[] }) {
@@ -35,7 +44,11 @@ function RelationSection({ title, people }: { title: string; people: Person[] })
   )
 }
 
-export function PersonDetail({ person, parents, spouses, offspring }: PersonDetailProps) {
+export function PersonDetail({ person, parents, spouses, offspring, onSaved }: PersonDetailProps) {
+  const { user } = useAuth()
+  const [editing, setEditing] = useState(false)
+  const canEdit = canEditPerson(user, person)
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -43,31 +56,77 @@ export function PersonDetail({ person, parents, spouses, offspring }: PersonDeta
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="flex flex-col gap-10"
     >
-      <div className="glass-strong flex flex-col items-center gap-4 rounded-3xl p-8 text-center sm:flex-row sm:items-start sm:p-10 sm:text-left">
-        <PersonAvatar person={person} size="lg" />
-        <div className="flex flex-col items-center gap-2 sm:items-start">
-          <h1 className="font-[var(--font-heading)] text-3xl font-bold text-[var(--color-foreground)]">
-            {person.name}
-          </h1>
-          <StatusBadge status={person.status} />
-          <dl className="mt-2 flex flex-col gap-1.5">
-            {FIELD_ROWS.map(({ key, icon: Icon, label }) => {
-              const value = person[key]
-              if (!value || typeof value !== 'string') return null
-              return (
-                <div
-                  key={key}
-                  className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"
-                >
-                  <Icon size={14} aria-hidden="true" />
-                  <dt className="sr-only">{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              )
-            })}
-          </dl>
-        </div>
-      </div>
+      <AnimatePresence mode="wait">
+        {editing ? (
+          <PersonEditForm
+            key="edit"
+            person={person}
+            onCancel={() => setEditing(false)}
+            onSaved={() => {
+              setEditing(false)
+              onSaved()
+            }}
+          />
+        ) : (
+          <motion.div
+            key="view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="glass-strong relative flex flex-col items-center gap-4 rounded-3xl p-8 text-center sm:flex-row sm:items-start sm:p-10 sm:text-left"
+          >
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="absolute top-5 right-5 flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--glass-border)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+              >
+                <Pencil size={12} aria-hidden="true" />
+                Edit
+              </button>
+            )}
+            <PersonAvatar person={person} size="lg" />
+            <div className="flex flex-col items-center gap-2 sm:items-start">
+              <h1 className="font-[var(--font-heading)] text-3xl font-bold text-[var(--color-foreground)]">
+                {person.name}
+              </h1>
+              <StatusBadge status={person.status} />
+              <dl className="mt-2 flex flex-col gap-1.5">
+                {PUBLIC_FIELD_ROWS.map(({ key, icon: Icon, label }) => {
+                  const value = person[key]
+                  if (!value || typeof value !== 'string') return null
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"
+                    >
+                      <Icon size={14} aria-hidden="true" />
+                      <dt className="sr-only">{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  )
+                })}
+                {user &&
+                  PRIVATE_FIELD_ROWS.map(({ key, icon: Icon, label }) => {
+                    const value = person[key]
+                    if (!value || typeof value !== 'string') return null
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"
+                      >
+                        <Icon size={14} aria-hidden="true" />
+                        <dt className="sr-only">{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    )
+                  })}
+              </dl>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <RelationSection title="Parents" people={parents} />
       <RelationSection title={spouses.length > 1 ? 'Spouses' : 'Spouse'} people={spouses} />

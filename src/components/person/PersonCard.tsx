@@ -31,14 +31,18 @@ export function PersonCard({ person, highlight }: PersonCardProps) {
   const inner = (
     <div
       className={`flex h-full flex-col items-center gap-3 rounded-2xl p-5 text-center transition-shadow duration-200 ${
-        placeholder ? 'border border-dashed border-[var(--color-border)] bg-transparent' : 'glass hover:shadow-[var(--shadow-elevated)]'
+        placeholder
+          ? 'border border-dashed border-[var(--color-border)] bg-transparent'
+          : 'glass hover:shadow-[var(--shadow-elevated)]'
       }`}
     >
       <PersonAvatar person={person} size="md" />
       <div className="flex flex-col items-center gap-1">
         <p
           className={`font-[var(--font-heading)] text-base font-semibold ${
-            placeholder ? 'text-[var(--color-muted-foreground)] italic' : 'text-[var(--color-card-foreground)]'
+            placeholder
+              ? 'text-[var(--color-muted-foreground)] italic'
+              : 'text-[var(--color-card-foreground)]'
           }`}
         >
           <HighlightedText text={person.name} query={highlight} />

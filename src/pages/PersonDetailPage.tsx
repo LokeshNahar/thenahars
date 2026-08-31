@@ -47,6 +47,7 @@ export function PersonDetailPage() {
         parents={parents}
         spouses={spouses}
         offspring={offspring}
+        people={people}
         onSaved={refetch}
       />
     </div>

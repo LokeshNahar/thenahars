@@ -1,10 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Briefcase, GraduationCap, Mail, MapPin, Pencil, Phone, UserPlus } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
-import { canAddRelationship, canEditPerson, type RelationKind } from '../../lib/permissions'
+import {
+  canAddLinkedFamily,
+  canAddRelationship,
+  canEditPerson,
+  type RelationKind,
+} from '../../lib/permissions'
+import { LinkedFamilyToggle } from '../tree/LinkedFamilyToggle'
+import { LinkedFamilyView } from '../tree/LinkedFamilyView'
 import { AddPersonForm } from './AddPersonForm'
+import { LinkFamilyRootForm } from './LinkFamilyRootForm'
 import { PersonAvatar } from './PersonAvatar'
 import { PersonCard } from './PersonCard'
 import { PersonEditForm } from './PersonEditForm'
@@ -16,6 +24,8 @@ interface PersonDetailProps {
   parents: Person[]
   spouses: Person[]
   offspring: Person[]
+  /** Full people array — needed to locate this person's linked-family branch, if any. */
+  people: Person[]
   onSaved: () => void
 }
 
@@ -69,8 +79,7 @@ function RelationSection({
   // person has at most one recorded spouse and exactly two parents in
   // this UI's common flow (adding a third is an admin/edge case, not
   // something this self-service tile should invite).
-  const atCap =
-    (relation === 'spouse' && people.length >= 1) || (relation === 'parent' && people.length >= 2)
+  const atCap = (relation === 'spouse' && people.length >= 1) || (relation === 'parent' && people.length >= 2)
   const showAddTile = canAdd && !atCap
 
   return (
@@ -88,16 +97,31 @@ function RelationSection({
   )
 }
 
-export function PersonDetail({ person, parents, spouses, offspring, onSaved }: PersonDetailProps) {
+export function PersonDetail({ person, parents, spouses, offspring, people, onSaved }: PersonDetailProps) {
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
   const [addingRelation, setAddingRelation] = useState<RelationKind | null>(null)
+  const [linkingFamily, setLinkingFamily] = useState(false)
+  const [viewingLinkedFamily, setViewingLinkedFamily] = useState(false)
   const canEdit = canEditPerson(user, person)
   const isLinkedMember = !!user?.naharId
+  const canLinkFamily = canAddLinkedFamily(user, person)
+
+  const linkedFamilyRoot = useMemo(
+    () => people.find((p) => p.linkedFamilyOf === person.nahar_id) ?? null,
+    [people, person.nahar_id],
+  )
 
   function handleSaved() {
     setAddingRelation(null)
     setEditing(false)
+    onSaved()
+  }
+
+  function handleLinkedFamilySaved(newRootId: string) {
+    void newRootId
+    setLinkingFamily(false)
+    setViewingLinkedFamily(true)
     onSaved()
   }
 
@@ -123,6 +147,13 @@ export function PersonDetail({ person, parents, spouses, offspring, onSaved }: P
             relation={addingRelation}
             onCancel={() => setAddingRelation(null)}
             onSaved={handleSaved}
+          />
+        ) : linkingFamily ? (
+          <LinkFamilyRootForm
+            key="link-family"
+            anchor={person}
+            onCancel={() => setLinkingFamily(false)}
+            onSaved={handleLinkedFamilySaved}
           />
         ) : (
           <motion.div
@@ -179,7 +210,7 @@ export function PersonDetail({ person, parents, spouses, offspring, onSaved }: P
         )}
       </AnimatePresence>
 
-      {!editing && !addingRelation && (
+      {!editing && !addingRelation && !linkingFamily && (
         <>
           <RelationSection
             relation="parent"
@@ -199,7 +230,39 @@ export function PersonDetail({ person, parents, spouses, offspring, onSaved }: P
             canAdd={canAddRelationship(user, person, 'child')}
             onAdd={() => setAddingRelation('child')}
           />
+
+          {(linkedFamilyRoot || canLinkFamily) && (
+            <div className="flex flex-col items-center gap-3 border-t border-[var(--glass-border)] pt-8 text-center">
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                A separate lineage connected through {person.name.split(' ')[0]}, tucked away until opened.
+              </p>
+              {linkedFamilyRoot ? (
+                <LinkedFamilyToggle
+                  label={linkedFamilyRoot.linkedFamilyLabel ?? `${person.name.split(' ')[0]}'s Family`}
+                  onClick={() => setViewingLinkedFamily(true)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setLinkingFamily(true)}
+                  className="flex cursor-pointer items-center gap-2 rounded-full border border-dashed border-[var(--glass-border)] px-4 py-2 text-sm font-medium text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                >
+                  <UserPlus size={14} aria-hidden="true" />
+                  Link Another Family
+                </button>
+              )}
+            </div>
+          )}
         </>
+      )}
+
+      {viewingLinkedFamily && linkedFamilyRoot && (
+        <LinkedFamilyView
+          root={linkedFamilyRoot}
+          anchor={person}
+          people={people}
+          onClose={() => setViewingLinkedFamily(false)}
+        />
       )}
     </motion.div>
   )

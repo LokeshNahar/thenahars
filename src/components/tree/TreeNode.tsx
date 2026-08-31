@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { isPlaceholder, type Person } from '../../data/schema'
 import { PersonAvatar } from '../person/PersonAvatar'
 import { StatusBadge } from '../person/StatusBadge'
+import { LinkedFamilyToggle } from './LinkedFamilyToggle'
 import { PersonPreviewPopover } from './PersonPreviewPopover'
 
 interface TreeNodeProps {
@@ -17,6 +18,9 @@ interface TreeNodeProps {
   y: number
   /** True for the person the tree auto-zoomed to (e.g. the signed-in viewer). */
   focused?: boolean
+  /** nahar_id -> linkedFamilyLabel, for anyone in this unit who has a linked branch. */
+  linkedFamilyByPersonId?: Map<string, string>
+  onOpenLinkedFamily?: (personId: string) => void
 }
 
 interface AnchorRect {
@@ -25,7 +29,17 @@ interface AnchorRect {
   width: number
 }
 
-function MiniCard({ person, focused = false }: { person: Person; focused?: boolean }) {
+function MiniCard({
+  person,
+  focused = false,
+  linkedFamilyLabel,
+  onOpenLinkedFamily,
+}: {
+  person: Person
+  focused?: boolean
+  linkedFamilyLabel?: string
+  onOpenLinkedFamily?: () => void
+}) {
   const placeholder = isPlaceholder(person)
   const [hovering, setHovering] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
@@ -77,6 +91,9 @@ function MiniCard({ person, focused = false }: { person: Person; focused?: boole
       >
         {body}
       </Link>
+      {linkedFamilyLabel && onOpenLinkedFamily && (
+        <LinkedFamilyToggle compact label={linkedFamilyLabel} onClick={onOpenLinkedFamily} />
+      )}
     </div>
   )
 }
@@ -90,6 +107,8 @@ function TreeNodeBase({
   x,
   y,
   focused = false,
+  linkedFamilyByPersonId,
+  onOpenLinkedFamily,
 }: TreeNodeProps) {
   const isCouple = spouses.length > 0
 
@@ -104,13 +123,22 @@ function TreeNodeBase({
       style={{ left: 0, top: 0 }}
     >
       <div className="flex items-center gap-2">
-        <MiniCard person={primary} focused={focused} />
+        <MiniCard
+          person={primary}
+          focused={focused}
+          linkedFamilyLabel={linkedFamilyByPersonId?.get(primary.nahar_id)}
+          onOpenLinkedFamily={onOpenLinkedFamily ? () => onOpenLinkedFamily(primary.nahar_id) : undefined}
+        />
         {spouses.map((s) => (
           <div key={s.nahar_id} className="flex items-center gap-2">
             {isCouple && (
               <span aria-hidden="true" className="h-px w-3 shrink-0 bg-[var(--color-accent)] opacity-50" />
             )}
-            <MiniCard person={s} />
+            <MiniCard
+              person={s}
+              linkedFamilyLabel={linkedFamilyByPersonId?.get(s.nahar_id)}
+              onOpenLinkedFamily={onOpenLinkedFamily ? () => onOpenLinkedFamily(s.nahar_id) : undefined}
+            />
           </div>
         ))}
       </div>

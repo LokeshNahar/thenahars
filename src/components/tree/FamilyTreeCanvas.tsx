@@ -9,6 +9,7 @@ import {
 import type { Person } from '../../data/schema'
 import { buildFamilyUnit, findRootId, getAncestorChain } from '../../lib/treeBuilder'
 import { layoutTree } from '../../lib/treeLayout'
+import { LinkedFamilyView } from './LinkedFamilyView'
 import { TreeControls } from './TreeControls'
 import { TreeEdge } from './TreeEdge'
 import { TreeNode } from './TreeNode'
@@ -51,6 +52,26 @@ export function FamilyTreeCanvas({ people, focusId, rootIdOverride }: FamilyTree
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
   const [pinchReady, setPinchReady] = useState(false)
+  const [openLinkedFamilyId, setOpenLinkedFamilyId] = useState<string | null>(null)
+
+  // Only meaningful when this canvas is itself rendering the main tree — a
+  // linked-family branch's own root has no further linked branches, so the
+  // takeover never nests inside itself.
+  const linkedFamilyByPersonId = useMemo(() => {
+    const map = new Map<string, string>()
+    if (rootIdOverride) return map
+    for (const p of people) {
+      if (p.linkedFamilyOf) {
+        map.set(p.linkedFamilyOf, p.linkedFamilyLabel ?? `${p.name.split(' ')[0]}'s Family`)
+      }
+    }
+    return map
+  }, [people, rootIdOverride])
+
+  const linkedFamilyRoot = openLinkedFamilyId
+    ? people.find((p) => p.linkedFamilyOf === openLinkedFamilyId)
+    : null
+  const linkedFamilyAnchor = openLinkedFamilyId ? people.find((p) => p.nahar_id === openLinkedFamilyId) : null
 
   const toggle = useCallback((id: string) => {
     setExpanded((prev) => {
@@ -209,12 +230,23 @@ export function FamilyTreeCanvas({ people, focusId, rootIdOverride }: FamilyTree
                   x={p.x + offsetX}
                   y={p.y}
                   focused={p.unit.id === focusedNodeId}
+                  linkedFamilyByPersonId={linkedFamilyByPersonId}
+                  onOpenLinkedFamily={linkedFamilyByPersonId.size > 0 ? setOpenLinkedFamilyId : undefined}
                 />
               ))}
             </AnimatePresence>
           </div>
         </TransformComponent>
       </TransformWrapper>
+
+      {linkedFamilyRoot && linkedFamilyAnchor && (
+        <LinkedFamilyView
+          root={linkedFamilyRoot}
+          anchor={linkedFamilyAnchor}
+          people={people}
+          onClose={() => setOpenLinkedFamilyId(null)}
+        />
+      )}
     </div>
   )
 }

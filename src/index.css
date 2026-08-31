@@ -20,6 +20,8 @@
   --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
   --color-ring: #a16207;
+  /* Cool tone for linked-external-family branches — visually distinct from the warm gold main tree. */
+  --color-linked-accent: #5b7f9a;
 
   /* Glass surfaces */
   --glass-bg: rgba(255, 255, 255, 0.55);

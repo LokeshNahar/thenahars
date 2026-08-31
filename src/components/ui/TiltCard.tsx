@@ -7,10 +7,18 @@ interface TiltCardProps {
   className?: string
   maxTilt?: number
   glare?: boolean
+  /** Use the warmer accent-tinted glow instead of the neutral glass highlight. */
+  accentGlow?: boolean
 }
 
 /** Cursor-following 3D tilt with an optional light-reflection glare, respecting reduced motion. */
-export function TiltCard({ children, className = '', maxTilt = 10, glare = true }: TiltCardProps) {
+export function TiltCard({
+  children,
+  className = '',
+  maxTilt = 10,
+  glare = true,
+  accentGlow = false,
+}: TiltCardProps) {
   const prefersReducedMotion = usePrefersReducedMotion()
   const [hovering, setHovering] = useState(false)
   const rotateX = useMotionValue(0)
@@ -20,7 +28,9 @@ export function TiltCard({ children, className = '', maxTilt = 10, glare = true 
 
   const springRotateX = useSpring(rotateX, { stiffness: 260, damping: 20 })
   const springRotateY = useSpring(rotateY, { stiffness: 260, damping: 20 })
-  const glareBackground = useMotionTemplate`radial-gradient(circle at ${glareX}% ${glareY}%, var(--glass-highlight), transparent 60%)`
+  const glareBackground = useMotionTemplate`radial-gradient(circle at ${glareX}% ${glareY}%, ${
+    accentGlow ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'var(--glass-highlight)'
+  }, transparent 60%)`
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (prefersReducedMotion) return
@@ -44,6 +54,8 @@ export function TiltCard({ children, className = '', maxTilt = 10, glare = true 
     <motion.div
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
+      animate={{ scale: hovering && !prefersReducedMotion ? 1.03 : 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       style={{
         rotateX: prefersReducedMotion ? 0 : springRotateX,
         rotateY: prefersReducedMotion ? 0 : springRotateY,
@@ -60,6 +72,14 @@ export function TiltCard({ children, className = '', maxTilt = 10, glare = true 
           animate={{ opacity: hovering ? 1 : 0 }}
           transition={{ duration: 0.25 }}
           className="pointer-events-none absolute inset-0 rounded-[inherit]"
+        />
+      )}
+      {accentGlow && (
+        <motion.div
+          aria-hidden="true"
+          animate={{ opacity: hovering && !prefersReducedMotion ? 1 : 0 }}
+          transition={{ duration: 0.25 }}
+          className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[var(--shadow-glow)]"
         />
       )}
     </motion.div>

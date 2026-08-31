@@ -7,6 +7,7 @@ export const EDITABLE_PERSONAL_FIELDS = [
   'phone',
   'email',
   'profession',
+  'qualification',
   'location',
   'photo',
   'instagram',

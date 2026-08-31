@@ -17,6 +17,8 @@ export interface Person {
   phone: string | null
   email: string | null
   profession: string | null
+  /** Highest education/qualification — a QUALIFICATIONS value or free text. */
+  qualification: string | null
   /** City/region only — street addresses are not stored for privacy. */
   location: string | null
   /** Relative path or URL; null falls back to a placeholder avatar. */

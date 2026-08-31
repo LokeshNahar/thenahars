@@ -4,6 +4,8 @@ import { Loader2, Save, X } from 'lucide-react'
 import { useState } from 'react'
 import type { LifeStatus, Person } from '../../data/schema'
 import { db } from '../../lib/firebase'
+import { OCCUPATIONS, QUALIFICATIONS } from '../../lib/qualifications'
+import { SelectWithOther } from '../ui/SelectWithOther'
 
 interface PersonEditFormProps {
   person: Person
@@ -16,6 +18,7 @@ interface FormState {
   phone: string
   email: string
   profession: string
+  qualification: string
   location: string
   photo: string
   instagram: string
@@ -31,6 +34,7 @@ function toFormState(person: Person): FormState {
     phone: person.phone ?? '',
     email: person.email ?? '',
     profession: person.profession ?? '',
+    qualification: person.qualification ?? '',
     location: person.location ?? '',
     photo: person.photo ?? '',
     instagram: person.instagram ?? '',
@@ -92,6 +96,7 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
         phone: form.phone.trim() || null,
         email: trimmedEmail ? trimmedEmail.toLowerCase() : null,
         profession: form.profession.trim() || null,
+        qualification: form.qualification.trim() || null,
         location: form.location.trim() || null,
         photo: form.photo.trim() || null,
         instagram: sanitizeHandle(form.instagram) || null,
@@ -181,14 +186,29 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
 
         <div>
           <label className={labelClass} htmlFor="profession">
-            Profession
+            Occupation
           </label>
-          <input
+          <SelectWithOther
             id="profession"
-            className={inputClass}
             value={form.profession}
-            onChange={(e) => update('profession', e.target.value)}
-            placeholder="Not set"
+            onChange={(v) => update('profession', v)}
+            options={OCCUPATIONS}
+            selectClassName={inputClass}
+            inputClassName={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="qualification">
+            Highest Qualification
+          </label>
+          <SelectWithOther
+            id="qualification"
+            value={form.qualification}
+            onChange={(v) => update('qualification', v)}
+            options={QUALIFICATIONS}
+            selectClassName={inputClass}
+            inputClassName={inputClass}
           />
         </div>
 

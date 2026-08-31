@@ -23,13 +23,14 @@ function framePerson(
   id: string,
   contentRef: React.RefObject<HTMLDivElement | null>,
   transformRef: React.RefObject<ReactZoomPanPinchRef | null>,
+  delayMs = 60,
 ) {
   window.setTimeout(() => {
     const el = contentRef.current?.querySelector<HTMLElement>(`[data-node-id="${id}"]`)
     if (el && transformRef.current) {
       transformRef.current.zoomToElement(el, undefined, 500, 'easeOut')
     }
-  }, 60)
+  }, delayMs)
 }
 
 export function FamilyTreeCanvas({ people, focusId }: FamilyTreeCanvasProps) {
@@ -43,6 +44,7 @@ export function FamilyTreeCanvas({ people, focusId }: FamilyTreeCanvasProps) {
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
+  const [pinchReady, setPinchReady] = useState(false)
 
   const toggle = useCallback((id: string) => {
     setExpanded((prev) => {
@@ -58,24 +60,51 @@ export function FamilyTreeCanvas({ people, focusId }: FamilyTreeCanvasProps) {
     framePerson(id, contentRef, transformRef)
   }, [])
 
-  // On first mount with a focus target, frame that person once their
-  // ancestor chain (seeded above) has finished laying out, and mark them
-  // for the pulsing glow ring so the eye lands on the right node among
-  // possibly several siblings.
-  useEffect(() => {
+  // Re-expands the path to focusId (in case the viewer collapsed it since)
+  // and re-frames them — the "Go to My Branch" control's handler.
+  const goToMyBranch = useCallback(() => {
     if (!focusId) return
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      for (const id of getAncestorChain(focusId, people)) next.add(id)
+      return next
+    })
     setFocusedNodeId(focusId)
-    framePerson(focusId, contentRef, transformRef)
-    // Only ever run this for the initial focus target — re-focusing on every
-    // people/expanded change would fight the user's own subsequent panning.
+    framePerson(focusId, contentRef, transformRef, 120)
+  }, [focusId, people])
+
+  // On first mount with a focus target, frame that person — but only once
+  // react-zoom-pan-pinch itself has finished its own initial centerOnInit
+  // setup (via onInit below). Framing before that races the wrapper's own
+  // positioning and the ancestor chain's Framer Motion spring-in, both of
+  // which are still animating on the very first render — that race is what
+  // previously left the camera stopped on an intermediate ancestor instead
+  // of the actual focused person. A longer settle delay here (vs. the
+  // ~60ms used for a user-triggered toggle, which only ever animates one
+  // already-mounted level) gives multi-level chains time to finish.
+  useEffect(() => {
+    if (!focusId || !pinchReady) return
+    setFocusedNodeId(focusId)
+    framePerson(focusId, contentRef, transformRef, 350)
+    // Only ever run this once pinchReady flips true for this focus target —
+    // re-focusing on every people/expanded change would fight the user's
+    // own subsequent panning.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusId])
+  }, [focusId, pinchReady])
 
   const root = useMemo(
     () => (rootId ? buildFamilyUnit(rootId, people, expanded) : null),
     [rootId, people, expanded],
   )
   const positioned = useMemo(() => (root ? layoutTree(root) : []), [root])
+
+  // Every unit id on the path from root down to (and including) the
+  // focused person — used to render "my branch" thicker/warmer than the
+  // rest of the tree. Only meaningful once we actually have a focus target.
+  const myPathIds = useMemo(() => {
+    if (!focusId) return null
+    return new Set([...getAncestorChain(focusId, people), focusId])
+  }, [focusId, people])
 
   if (!root) {
     return (
@@ -109,8 +138,9 @@ export function FamilyTreeCanvas({ people, focusId }: FamilyTreeCanvasProps) {
         initialScale={0.8}
         centerOnInit
         wheel={{ step: 0.15 }}
+        onInit={() => setPinchReady(true)}
       >
-        <TreeControls />
+        <TreeControls onGoToMyBranch={focusId ? goToMyBranch : undefined} />
         <MiniMap
           width={140}
           height={100}
@@ -146,6 +176,7 @@ export function FamilyTreeCanvas({ people, focusId }: FamilyTreeCanvasProps) {
                   .map((p, i) => {
                     const parent = byIdMap.get(p.parentId!)
                     if (!parent) return null
+                    const onMyPath = !!myPathIds && myPathIds.has(p.unit.id) && myPathIds.has(parent.unit.id)
                     return (
                       <TreeEdge
                         key={p.unit.id}
@@ -154,6 +185,7 @@ export function FamilyTreeCanvas({ people, focusId }: FamilyTreeCanvasProps) {
                         toX={p.x + offsetX}
                         toY={p.y - 24}
                         delay={Math.min(i, 7) * 0.05}
+                        onMyPath={onMyPath}
                       />
                     )
                   })}

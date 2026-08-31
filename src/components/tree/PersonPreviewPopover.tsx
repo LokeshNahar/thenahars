@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Briefcase, MapPin } from 'lucide-react'
 import { createPortal } from 'react-dom'
+import { useAuth } from '../../context/AuthContext'
 import { isPlaceholder, type Person } from '../../data/schema'
 import { PersonAvatar } from '../person/PersonAvatar'
 import { StatusBadge } from '../person/StatusBadge'
@@ -22,6 +23,8 @@ interface PersonPreviewPopoverProps {
  * the anchor's real screen rect keeps it crisp and correctly sized always.
  */
 export function PersonPreviewPopover({ person, visible, anchorRect }: PersonPreviewPopoverProps) {
+  const { user } = useAuth()
+  const isLinkedMember = !!user?.naharId
   if (isPlaceholder(person) || !anchorRect) return null
 
   return createPortal(
@@ -48,7 +51,7 @@ export function PersonPreviewPopover({ person, visible, anchorRect }: PersonPrev
               <StatusBadge status={person.status} />
             </div>
           </div>
-          {(person.profession || person.location) && (
+          {isLinkedMember && (person.profession || person.location) && (
             <div className="mt-3 flex flex-col gap-1 border-t border-[var(--glass-border)] pt-2.5">
               {person.profession && (
                 <p className="flex items-center gap-1.5 text-xs text-[var(--color-muted-foreground)]">

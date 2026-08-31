@@ -1,5 +1,6 @@
 import { Briefcase, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import { isPlaceholder, type Person } from '../../data/schema'
 import { TiltCard } from '../ui/TiltCard'
 import { PersonAvatar } from './PersonAvatar'
@@ -26,6 +27,8 @@ function HighlightedText({ text, query }: { text: string; query?: string }) {
 }
 
 export function PersonCard({ person, highlight }: PersonCardProps) {
+  const { user } = useAuth()
+  const isLinkedMember = !!user?.naharId
   const placeholder = isPlaceholder(person)
 
   const inner = (
@@ -47,13 +50,13 @@ export function PersonCard({ person, highlight }: PersonCardProps) {
         >
           <HighlightedText text={person.name} query={highlight} />
         </p>
-        {person.profession && (
+        {isLinkedMember && person.profession && (
           <p className="flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
             <Briefcase size={12} aria-hidden="true" />
             <HighlightedText text={person.profession} query={highlight} />
           </p>
         )}
-        {person.location && (
+        {isLinkedMember && person.location && (
           <p className="flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
             <MapPin size={12} aria-hidden="true" />
             <HighlightedText text={person.location} query={highlight} />
@@ -67,7 +70,7 @@ export function PersonCard({ person, highlight }: PersonCardProps) {
   if (placeholder) return <div className="h-full">{inner}</div>
 
   const content = (
-    <TiltCard className="h-full" maxTilt={6}>
+    <TiltCard className="h-full" maxTilt={6} accentGlow>
       {inner}
     </TiltCard>
   )

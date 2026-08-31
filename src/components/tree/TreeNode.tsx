@@ -44,9 +44,16 @@ function MiniCard({ person, focused = false }: { person: Person; focused?: boole
       className={`flex w-28 flex-col items-center gap-1.5 rounded-2xl p-2.5 text-center transition-[box-shadow,transform] duration-200 ${
         placeholder
           ? 'border border-dashed border-[var(--color-border)]'
-          : 'glass hover:scale-[1.04] hover:shadow-[var(--shadow-glow)]'
+          : focused
+            ? 'border-2 border-[var(--color-accent)] bg-[var(--color-accent)]/10 backdrop-blur-[var(--glass-blur)] hover:scale-[1.04]'
+            : 'glass hover:scale-[1.04] hover:shadow-[var(--shadow-glow)]'
       } ${focused ? 'focus-ring-pulse' : ''}`}
     >
+      {focused && (
+        <span className="rounded-full bg-[var(--color-accent)] px-2 py-0.5 text-[9px] font-bold tracking-wide text-[var(--color-accent-foreground)] uppercase">
+          You
+        </span>
+      )}
       <PersonAvatar person={person} size="sm" />
       <p
         className={`line-clamp-2 text-xs leading-tight font-semibold ${

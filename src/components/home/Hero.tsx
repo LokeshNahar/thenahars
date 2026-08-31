@@ -13,7 +13,10 @@ export function Hero() {
   const springY = useSpring(py, { stiffness: 60, damping: 20 })
   const glowTransform = useMotionTemplate`translate3d(${springX}px, ${springY}px, 0)`
 
-  const firstName = user?.naharId && user.name ? user.name.split(' ')[0] : null
+  const fullName = user?.naharId ? user.name : null
+  const nameParts = fullName?.trim().split(/\s+/) ?? []
+  const firstName = nameParts.length > 0 ? nameParts[0] : null
+  const surname = nameParts.length > 1 ? nameParts[nameParts.length - 1] : null
 
   function onPointerMove(e: React.PointerEvent<HTMLElement>) {
     if (prefersReducedMotion) return
@@ -34,17 +37,38 @@ export function Hero() {
       />
 
       <AnimatePresence mode="wait">
-        <motion.div
-          key={firstName ?? 'default'}
-          initial={{ opacity: 0, y: 8, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.9 }}
-          transition={{ duration: 0.4, type: 'spring', stiffness: 200, damping: 20 }}
-          className="glass relative z-10 mb-6 flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-widest text-[var(--color-accent)] uppercase"
-        >
-          <Sparkles size={12} aria-hidden="true" />
-          {firstName ? `Welcome back, ${firstName}` : 'Est. with Bhanwar Lal & Bhanwari Devi Nahar'}
-        </motion.div>
+        {firstName ? (
+          <motion.p
+            key="welcome"
+            initial={{ opacity: 0, y: 12, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.95 }}
+            transition={{ duration: 0.45, type: 'spring', stiffness: 190, damping: 20 }}
+            className="relative z-10 mb-3 font-[var(--font-heading)] text-2xl font-semibold text-[var(--color-foreground)] sm:text-3xl"
+          >
+            Welcome back, {firstName}
+            {surname && (
+              <>
+                {' '}
+                <span className="bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-2)] bg-clip-text text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl">
+                  {surname}
+                </span>
+              </>
+            )}
+          </motion.p>
+        ) : (
+          <motion.div
+            key="default"
+            initial={{ opacity: 0, y: 8, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.9 }}
+            transition={{ duration: 0.4, type: 'spring', stiffness: 200, damping: 20 }}
+            className="glass relative z-10 mb-6 flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-widest text-[var(--color-accent)] uppercase"
+          >
+            <Sparkles size={12} aria-hidden="true" />
+            Est. with Bhanwar Lal & Bhanwari Devi Nahar
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <motion.h1

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Briefcase, Mail, MapPin, Pencil, Phone } from 'lucide-react'
+import { Briefcase, GraduationCap, Mail, MapPin, Pencil, Phone } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
@@ -18,13 +18,15 @@ interface PersonDetailProps {
   onSaved: () => void
 }
 
-const PUBLIC_FIELD_ROWS: Array<{ key: keyof Person; icon: typeof Phone; label: string }> = [
-  { key: 'profession', icon: Briefcase, label: 'Profession' },
-  { key: 'location', icon: MapPin, label: 'Location' },
-]
-
-/** Contact details — only shown to signed-in visitors, not public/anonymous browsing. */
+/**
+ * Every detail beyond a bare name is only shown to signed-in visitors who
+ * are themselves a linked family member — anonymous/unmatched browsing
+ * sees names only, per the family's privacy preference.
+ */
 const PRIVATE_FIELD_ROWS: Array<{ key: keyof Person; icon: typeof Phone; label: string }> = [
+  { key: 'profession', icon: Briefcase, label: 'Profession' },
+  { key: 'qualification', icon: GraduationCap, label: 'Qualification' },
+  { key: 'location', icon: MapPin, label: 'Location' },
   { key: 'phone', icon: Phone, label: 'Phone' },
   { key: 'email', icon: Mail, label: 'Email' },
 ]
@@ -49,6 +51,7 @@ export function PersonDetail({ person, parents, spouses, offspring, onSaved }: P
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
   const canEdit = canEditPerson(user, person)
+  const isLinkedMember = !!user?.naharId
 
   return (
     <motion.div
@@ -93,38 +96,31 @@ export function PersonDetail({ person, parents, spouses, offspring, onSaved }: P
                 {person.name}
               </h1>
               <StatusBadge status={person.status} />
-              <dl className="mt-2 flex flex-col gap-1.5">
-                {PUBLIC_FIELD_ROWS.map(({ key, icon: Icon, label }) => {
-                  const value = person[key]
-                  if (!value || typeof value !== 'string') return null
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"
-                    >
-                      <Icon size={14} aria-hidden="true" />
-                      <dt className="sr-only">{label}</dt>
-                      <dd>{value}</dd>
-                    </div>
-                  )
-                })}
-                {user &&
-                  PRIVATE_FIELD_ROWS.map(({ key, icon: Icon, label }) => {
-                    const value = person[key]
-                    if (!value || typeof value !== 'string') return null
-                    return (
-                      <div
-                        key={key}
-                        className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"
-                      >
-                        <Icon size={14} aria-hidden="true" />
-                        <dt className="sr-only">{label}</dt>
-                        <dd>{value}</dd>
-                      </div>
-                    )
-                  })}
-              </dl>
-              {user && <SocialLinks person={person} />}
+              {isLinkedMember ? (
+                <>
+                  <dl className="mt-2 flex flex-col gap-1.5">
+                    {PRIVATE_FIELD_ROWS.map(({ key, icon: Icon, label }) => {
+                      const value = person[key]
+                      if (!value || typeof value !== 'string') return null
+                      return (
+                        <div
+                          key={key}
+                          className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"
+                        >
+                          <Icon size={14} aria-hidden="true" />
+                          <dt className="sr-only">{label}</dt>
+                          <dd>{value}</dd>
+                        </div>
+                      )
+                    })}
+                  </dl>
+                  <SocialLinks person={person} />
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-[var(--color-muted-foreground)] italic">
+                  Sign in as a family member to see more details.
+                </p>
+              )}
             </div>
           </motion.div>
         )}

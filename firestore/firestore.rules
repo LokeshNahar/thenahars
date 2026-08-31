@@ -1,0 +1,98 @@
+// Deployed rules. See PHASE2-PLAN.md for the full design rationale.
+//
+// Model:
+//   - `people/{naharId}` mirrors the Person shape in src/data/schema.ts.
+//   - `people_by_email/{emailLowercased}` is a denormalized lookup doc
+//     `{ nahar_id }`, kept in sync by the app itself (writeBatch) whenever
+//     a person's email changes — no Cloud Function. The rules below make
+//     sure a client can only ever point this lookup at a nahar_id it's
+//     already authorized to edit, so it can't be forged to hijack someone
+//     else's identity.
+//   - Anyone (including signed-out visitors) can read the directory.
+//   - A signed-in member may write PERSONAL fields only (name, phone,
+//     email, profession, location, photo, status, notes) on:
+//       - their own record
+//       - their parents' / spouse's / children's records
+//   - role == "admin" may write anything on any record, including the
+//     relationship arrays (parents/spouse/children), nahar_id, claimed,
+//     and role itself.
+//   - Relationship editing is intentionally admin-only for everyone else —
+//     a wrong phone number is a small mistake, a corrupted parents/children
+//     link breaks the tree structure for everyone.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedInEmail() {
+      return request.auth != null ? request.auth.token.email.lower() : null;
+    }
+
+    function callerPerson() {
+      let email = signedInEmail();
+      return email != null && exists(/databases/$(database)/documents/people_by_email/$(email))
+        ? get(/databases/$(database)/documents/people/
+            $(get(/databases/$(database)/documents/people_by_email/$(email)).data.nahar_id)
+          ).data
+        : null;
+    }
+
+    function isAdmin() {
+      let me = callerPerson();
+      return me != null && me.role == 'admin';
+    }
+
+    function isSelf(targetId) {
+      let me = callerPerson();
+      return me != null && me.nahar_id == targetId;
+    }
+
+    function isImmediateRelative(target) {
+      let me = callerPerson();
+      return me != null && (
+        target.nahar_id in me.spouse ||
+        me.nahar_id in target.spouse ||
+        me.nahar_id in target.parents ||   // target is my child
+        target.nahar_id in me.parents      // target is my parent
+      );
+    }
+
+    function canEditPerson(targetId, target) {
+      return isAdmin() || isSelf(targetId) || isImmediateRelative(target);
+    }
+
+    function onlyPersonalFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'name', 'phone', 'email', 'profession', 'location', 'photo', 'status', 'notes'
+      ]);
+    }
+
+    match /people/{naharId} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if signedInEmail() != null
+        && canEditPerson(naharId, resource.data)
+        && (isAdmin() || onlyPersonalFieldsChanged());
+      allow delete: if isAdmin();
+    }
+
+    match /people_by_email/{email} {
+      allow read: if request.auth != null;
+      allow write: if signedInEmail() != null && (
+        isAdmin() ||
+        (
+          // Only allowed to (re)point a lookup at a nahar_id the caller
+          // is already authorized to edit, and never for someone else's
+          // email address.
+          email == signedInEmail() &&
+          exists(/databases/$(database)/documents/people/$(request.resource.data.nahar_id)) &&
+          canEditPerson(
+            request.resource.data.nahar_id,
+            get(/databases/$(database)/documents/people/$(request.resource.data.nahar_id)).data
+          )
+        )
+      );
+    }
+  }
+}

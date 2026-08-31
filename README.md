@@ -49,22 +49,28 @@ from search. Still needed:
 - [ ] Everyone's phone, email, profession, location, and photo — all `null` for now
 - [ ] Additional generations/roots as they're provided
 
-## Firebase (Phase 2 — not active yet)
+## Firebase / Phase 2 (Google Sign-In + self-service editing)
 
-Google Sign-In, Firestore-backed data, and self-service editing are planned but intentionally
-**not wired up** in this milestone. The seams are already in place:
+Being built on the `dev` branch — see [`PHASE2-PLAN.md`](PHASE2-PLAN.md) for the full design.
 
-- `.env.example` documents the config; copy to `.env.local` (git-ignored) and set
-  `VITE_USE_FIREBASE=true` when a real Firebase project exists.
-- [`src/lib/firebase.ts`](src/lib/firebase.ts) only initializes when that flag is on — safe to
-  import anywhere in the meantime.
-- [`src/context/AuthContext.tsx`](src/context/AuthContext.tsx) is a no-op provider today
-  (`user` is always `null`).
-- [`firestore/firestore.rules.draft`](firestore/firestore.rules.draft) documents the intended
-  edit-permission model (self + parents/spouse/children by matched email; admins anywhere) —
-  not deployed anywhere yet.
-- Phone-number OTP self-claim is deferred entirely; not modeled beyond a reserved `claimed`
-  field on each person.
+- Three separate Firebase projects, one per environment: `thenahars-dev` (branch `dev`),
+  `thenahars-uat` (branch `uat`), `thenahars-prod` (branch `main`, deployed). Each has its own
+  Auth users and Firestore data. Storage is intentionally not provisioned (requires the Blaze
+  plan; nothing in the app needs it yet — `photo` is a plain URL string field).
+- `.env.example` documents the required config; each branch has its own git-ignored `.env.local`
+  pointing at that branch's Firebase project. `main`'s config is injected from GitHub Actions
+  secrets at build time, never committed.
+- [`src/lib/firebase.ts`](src/lib/firebase.ts) only initializes when `VITE_USE_FIREBASE=true` —
+  safe to import anywhere even when Firebase isn't configured.
+- [`src/context/AuthContext.tsx`](src/context/AuthContext.tsx) — Google Sign-In via Firebase
+  Auth, matching the signed-in email against a `people/{nahar_id}.email` field.
+- [`firestore/firestore.rules`](firestore/firestore.rules) — deployed rules: a signed-in member
+  can edit their own (and immediate relatives') personal fields; only admins can edit
+  relationship links (`parents`/`spouse`/`children`), roles, or create/delete people.
+- [`scripts/seed-firestore.ts`](scripts/seed-firestore.ts) — one-off migration that seeds a
+  Firestore project from `src/data/people.json`. Run once per environment (`npm run seed` with
+  `GOOGLE_APPLICATION_CREDENTIALS` set to a downloaded service account key).
+- Phone-number OTP self-claim is still deferred; not modeled beyond a reserved `claimed` field.
 
 ## Deployment
 

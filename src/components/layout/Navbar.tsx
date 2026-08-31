@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { siteConfig } from '../../config/site'
 import { ThemeToggle } from './ThemeToggle'
+import { UserMenu } from './UserMenu'
 
 export function Navbar() {
   const [open, setOpen] = useState(false)
@@ -41,7 +42,9 @@ export function Navbar() {
                   )}
                   <span
                     className={`relative z-10 ${
-                      isActive ? 'text-[var(--color-accent-foreground)]' : 'text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
+                      isActive
+                        ? 'text-[var(--color-accent-foreground)]'
+                        : 'text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
                     }`}
                   >
                     {item.label}
@@ -49,13 +52,15 @@ export function Navbar() {
                 </NavLink>
               )
             })}
-            <div className="ml-2">
+            <div className="ml-2 flex items-center gap-2">
               <ThemeToggle />
+              <UserMenu />
             </div>
           </nav>
 
           <div className="flex items-center gap-2 md:hidden">
             <ThemeToggle />
+            <UserMenu />
             <button
               type="button"
               onClick={() => setOpen((o) => !o)}

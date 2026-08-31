@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
+  signInWithCustomToken,
   signInWithPopup,
   signOut as firebaseSignOut,
 } from 'firebase/auth'
@@ -86,6 +87,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return unsubscribe
+  }, [])
+
+  // Dev-only test hook: lets a local Playwright script sign in with a
+  // custom token (minted by the Admin SDK) instead of a real Google
+  // popup, which can't be automated headlessly. import.meta.env.DEV is
+  // Vite's build-time flag — false and dead-code-eliminated in any
+  // `npm run build` output, so this can never reach production.
+  useEffect(() => {
+    const naharAuth = auth
+    if (!import.meta.env.DEV || !naharAuth) return
+    const w = window as unknown as { __naharTestSignIn?: (token: string) => Promise<void> }
+    w.__naharTestSignIn = async (token: string) => {
+      await signInWithCustomToken(naharAuth, token)
+    }
+    return () => {
+      delete w.__naharTestSignIn
+    }
   }, [])
 
   function signIn() {

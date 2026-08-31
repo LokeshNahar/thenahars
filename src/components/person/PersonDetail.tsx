@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Briefcase, GraduationCap, Mail, MapPin, Pencil, Phone } from 'lucide-react'
+import { Briefcase, GraduationCap, Mail, MapPin, Pencil, Phone, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
-import { canEditPerson } from '../../lib/permissions'
+import { canAddRelationship, canEditPerson, type RelationKind } from '../../lib/permissions'
+import { AddPersonForm } from './AddPersonForm'
 import { PersonAvatar } from './PersonAvatar'
 import { PersonCard } from './PersonCard'
 import { PersonEditForm } from './PersonEditForm'
@@ -31,17 +32,54 @@ const PRIVATE_FIELD_ROWS: Array<{ key: keyof Person; icon: typeof Phone; label: 
   { key: 'email', icon: Mail, label: 'Email' },
 ]
 
-function RelationSection({ title, people }: { title: string; people: Person[] }) {
-  if (people.length === 0) return null
+const RELATION_TITLE: Record<RelationKind, { singular: string; plural: string }> = {
+  parent: { singular: 'Parent', plural: 'Parents' },
+  spouse: { singular: 'Spouse', plural: 'Spouses' },
+  child: { singular: 'Child', plural: 'Children' },
+}
+
+function AddRelationTile({ relation, onClick }: { relation: RelationKind; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-full min-h-[10rem] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--glass-border)] p-5 text-center text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+    >
+      <UserPlus size={20} aria-hidden="true" />
+      <span className="text-sm font-medium">Add {RELATION_TITLE[relation].singular}</span>
+    </button>
+  )
+}
+
+function RelationSection({
+  relation,
+  people,
+  canAdd,
+  onAdd,
+}: {
+  relation: RelationKind
+  people: Person[]
+  canAdd: boolean
+  onAdd: () => void
+}) {
+  const { singular, plural } = RELATION_TITLE[relation]
+  if (people.length === 0 && !canAdd) return null
+
+  // A person can only have one spouse-add prompt at a time in this UI —
+  // once they have a recorded spouse, adding another isn't offered here
+  // (that's an admin/edge case, not the common flow this form targets).
+  const showAddTile = canAdd && (relation !== 'spouse' || people.length === 0)
+
   return (
     <div>
       <h3 className="mb-3 font-[var(--font-heading)] text-lg font-semibold text-[var(--color-foreground)]">
-        {title}
+        {people.length > 1 ? plural : singular}
       </h3>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {people.map((p) => (
           <PersonCard key={p.nahar_id} person={p} />
         ))}
+        {showAddTile && <AddRelationTile relation={relation} onClick={onAdd} />}
       </div>
     </div>
   )
@@ -50,8 +88,15 @@ function RelationSection({ title, people }: { title: string; people: Person[] })
 export function PersonDetail({ person, parents, spouses, offspring, onSaved }: PersonDetailProps) {
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
+  const [addingRelation, setAddingRelation] = useState<RelationKind | null>(null)
   const canEdit = canEditPerson(user, person)
   const isLinkedMember = !!user?.naharId
+
+  function handleSaved() {
+    setAddingRelation(null)
+    setEditing(false)
+    onSaved()
+  }
 
   return (
     <motion.div
@@ -66,10 +111,15 @@ export function PersonDetail({ person, parents, spouses, offspring, onSaved }: P
             key="edit"
             person={person}
             onCancel={() => setEditing(false)}
-            onSaved={() => {
-              setEditing(false)
-              onSaved()
-            }}
+            onSaved={handleSaved}
+          />
+        ) : addingRelation ? (
+          <AddPersonForm
+            key="add"
+            anchor={person}
+            relation={addingRelation}
+            onCancel={() => setAddingRelation(null)}
+            onSaved={handleSaved}
           />
         ) : (
           <motion.div
@@ -126,9 +176,28 @@ export function PersonDetail({ person, parents, spouses, offspring, onSaved }: P
         )}
       </AnimatePresence>
 
-      <RelationSection title="Parents" people={parents} />
-      <RelationSection title={spouses.length > 1 ? 'Spouses' : 'Spouse'} people={spouses} />
-      <RelationSection title="Children" people={offspring} />
+      {!editing && !addingRelation && (
+        <>
+          <RelationSection
+            relation="parent"
+            people={parents}
+            canAdd={canAddRelationship(user, person, 'parent')}
+            onAdd={() => setAddingRelation('parent')}
+          />
+          <RelationSection
+            relation="spouse"
+            people={spouses}
+            canAdd={canAddRelationship(user, person, 'spouse')}
+            onAdd={() => setAddingRelation('spouse')}
+          />
+          <RelationSection
+            relation="child"
+            people={offspring}
+            canAdd={canAddRelationship(user, person, 'child')}
+            onAdd={() => setAddingRelation('child')}
+          />
+        </>
+      )}
     </motion.div>
   )
 }

@@ -10,6 +10,7 @@ interface MagneticButtonProps {
   variant?: 'solid' | 'glass'
   className?: string
   type?: 'button' | 'submit'
+  disabled?: boolean
 }
 
 const VARIANT_CLASS: Record<NonNullable<MagneticButtonProps['variant']>, string> = {
@@ -25,10 +26,11 @@ export function MagneticButton({
   variant = 'solid',
   className = '',
   type = 'button',
+  disabled = false,
 }: MagneticButtonProps) {
   const { ref, x, y, onPointerMove, onPointerLeave } = useMagnetic(0.25)
 
-  const baseClass = `inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-[background-color,box-shadow,filter] duration-200 ${VARIANT_CLASS[variant]} ${className}`
+  const baseClass = `inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-[background-color,box-shadow,filter] duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${VARIANT_CLASS[variant]} ${className}`
 
   const motionProps = {
     style: { x, y },
@@ -52,6 +54,7 @@ export function MagneticButton({
       ref={ref as React.RefObject<HTMLButtonElement>}
       type={type}
       onClick={onClick}
+      disabled={disabled}
       className={baseClass}
       {...motionProps}
     >

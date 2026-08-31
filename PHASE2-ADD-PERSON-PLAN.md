@@ -1,6 +1,6 @@
 # Add-Person & Linked-Family Plan
 
-Status: approved, not yet built. Executing on `dev` branch, building on top of the completed Phase 2 auth/editing work (see `PHASE2-PLAN.md`).
+Status: all 7 milestones built and verified on `dev` (pushed to `origin/dev`). Built on top of the completed Phase 2 auth/editing work (see `PHASE2-PLAN.md`).
 
 ## Context
 

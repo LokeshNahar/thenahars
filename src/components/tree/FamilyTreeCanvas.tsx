@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MiniMap,
   TransformComponent,
@@ -7,7 +7,7 @@ import {
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
 import type { Person } from '../../data/schema'
-import { buildFamilyUnit, findRootId } from '../../lib/treeBuilder'
+import { buildFamilyUnit, findRootId, getAncestorChain } from '../../lib/treeBuilder'
 import { layoutTree } from '../../lib/treeLayout'
 import { TreeControls } from './TreeControls'
 import { TreeEdge } from './TreeEdge'
@@ -15,13 +15,34 @@ import { TreeNode } from './TreeNode'
 
 interface FamilyTreeCanvasProps {
   people: Person[]
+  /** When set, the tree auto-expands the path to this person and frames them. */
+  focusId?: string | null
 }
 
-export function FamilyTreeCanvas({ people }: FamilyTreeCanvasProps) {
+function framePerson(
+  id: string,
+  contentRef: React.RefObject<HTMLDivElement | null>,
+  transformRef: React.RefObject<ReactZoomPanPinchRef | null>,
+) {
+  window.setTimeout(() => {
+    const el = contentRef.current?.querySelector<HTMLElement>(`[data-node-id="${id}"]`)
+    if (el && transformRef.current) {
+      transformRef.current.zoomToElement(el, undefined, 500, 'easeOut')
+    }
+  }, 60)
+}
+
+export function FamilyTreeCanvas({ people, focusId }: FamilyTreeCanvasProps) {
   const rootId = useMemo(() => findRootId(people), [people])
-  const [expanded, setExpanded] = useState<Set<string>>(() => (rootId ? new Set([rootId]) : new Set()))
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const initial = new Set<string>()
+    if (rootId) initial.add(rootId)
+    if (focusId) for (const id of getAncestorChain(focusId, people)) initial.add(id)
+    return initial
+  })
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
 
   const toggle = useCallback((id: string) => {
     setExpanded((prev) => {
@@ -34,13 +55,21 @@ export function FamilyTreeCanvas({ people }: FamilyTreeCanvasProps) {
     // Frame the toggled branch after its layout settles, so a newly
     // expanded (or re-collapsed) subtree stays in view instead of the
     // camera staying put while nodes reflow off-screen.
-    window.setTimeout(() => {
-      const el = contentRef.current?.querySelector<HTMLElement>(`[data-node-id="${id}"]`)
-      if (el && transformRef.current) {
-        transformRef.current.zoomToElement(el, undefined, 500, 'easeOut')
-      }
-    }, 60)
+    framePerson(id, contentRef, transformRef)
   }, [])
+
+  // On first mount with a focus target, frame that person once their
+  // ancestor chain (seeded above) has finished laying out, and mark them
+  // for the pulsing glow ring so the eye lands on the right node among
+  // possibly several siblings.
+  useEffect(() => {
+    if (!focusId) return
+    setFocusedNodeId(focusId)
+    framePerson(focusId, contentRef, transformRef)
+    // Only ever run this for the initial focus target — re-focusing on every
+    // people/expanded change would fight the user's own subsequent panning.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId])
 
   const root = useMemo(
     () => (rootId ? buildFamilyUnit(rootId, people, expanded) : null),
@@ -141,6 +170,7 @@ export function FamilyTreeCanvas({ people }: FamilyTreeCanvasProps) {
                   onToggle={() => toggle(p.unit.id)}
                   x={p.x + offsetX}
                   y={p.y}
+                  focused={p.unit.id === focusedNodeId}
                 />
               ))}
             </AnimatePresence>

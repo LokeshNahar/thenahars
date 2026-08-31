@@ -15,6 +15,8 @@ interface TreeNodeProps {
   onToggle: () => void
   x: number
   y: number
+  /** True for the person the tree auto-zoomed to (e.g. the signed-in viewer). */
+  focused?: boolean
 }
 
 interface AnchorRect {
@@ -23,7 +25,7 @@ interface AnchorRect {
   width: number
 }
 
-function MiniCard({ person }: { person: Person }) {
+function MiniCard({ person, focused = false }: { person: Person; focused?: boolean }) {
   const placeholder = isPlaceholder(person)
   const [hovering, setHovering] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
@@ -38,11 +40,12 @@ function MiniCard({ person }: { person: Person }) {
   const body = (
     <div
       ref={cardRef}
+      data-focused={focused || undefined}
       className={`flex w-28 flex-col items-center gap-1.5 rounded-2xl p-2.5 text-center transition-[box-shadow,transform] duration-200 ${
         placeholder
           ? 'border border-dashed border-[var(--color-border)]'
           : 'glass hover:scale-[1.04] hover:shadow-[var(--shadow-glow)]'
-      }`}
+      } ${focused ? 'focus-ring-pulse' : ''}`}
     >
       <PersonAvatar person={person} size="sm" />
       <p
@@ -71,7 +74,16 @@ function MiniCard({ person }: { person: Person }) {
   )
 }
 
-function TreeNodeBase({ primary, spouses, hasChildren, expanded, onToggle, x, y }: TreeNodeProps) {
+function TreeNodeBase({
+  primary,
+  spouses,
+  hasChildren,
+  expanded,
+  onToggle,
+  x,
+  y,
+  focused = false,
+}: TreeNodeProps) {
   const isCouple = spouses.length > 0
 
   return (
@@ -85,7 +97,7 @@ function TreeNodeBase({ primary, spouses, hasChildren, expanded, onToggle, x, y 
       style={{ left: 0, top: 0 }}
     >
       <div className="flex items-center gap-2">
-        <MiniCard person={primary} />
+        <MiniCard person={primary} focused={focused} />
         {spouses.map((s) => (
           <div key={s.nahar_id} className="flex items-center gap-2">
             {isCouple && (

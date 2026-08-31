@@ -193,3 +193,29 @@ h4 {
     transform: translate(-4%, -6%) scale(0.96);
   }
 }
+
+/* One-time pulse drawing the eye to the signed-in viewer's node once the
+   tree's auto-zoom camera settles — plays a few times then stops, rather
+   than distracting indefinitely. */
+.focus-ring-pulse {
+  animation: focus-ring-pulse 1.4s ease-out 0.5s 3;
+}
+
+@keyframes focus-ring-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-ring-pulse {
+    animation: none;
+    box-shadow: var(--shadow-glow);
+  }
+}

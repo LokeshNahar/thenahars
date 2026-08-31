@@ -18,6 +18,9 @@ interface FormState {
   profession: string
   location: string
   photo: string
+  instagram: string
+  facebook: string
+  linkedin: string
   status: LifeStatus
   notes: string
 }
@@ -30,9 +33,19 @@ function toFormState(person: Person): FormState {
     profession: person.profession ?? '',
     location: person.location ?? '',
     photo: person.photo ?? '',
+    instagram: person.instagram ?? '',
+    facebook: person.facebook ?? '',
+    linkedin: person.linkedin ?? '',
     status: person.status,
     notes: person.notes ?? '',
   }
+}
+
+/** Strips a leading @, and any full-URL prefix, down to a bare handle. */
+function sanitizeHandle(value: string): string {
+  const trimmed = value.trim()
+  const afterSlash = trimmed.includes('/') ? trimmed.split('/').filter(Boolean).pop()! : trimmed
+  return afterSlash.replace(/^@/, '')
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -81,6 +94,9 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
         profession: form.profession.trim() || null,
         location: form.location.trim() || null,
         photo: form.photo.trim() || null,
+        instagram: sanitizeHandle(form.instagram) || null,
+        facebook: sanitizeHandle(form.facebook) || null,
+        linkedin: sanitizeHandle(form.linkedin) || null,
         status: form.status,
         notes: form.notes.trim() || null,
       })
@@ -200,6 +216,56 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
             value={form.photo}
             onChange={(e) => update('photo', e.target.value)}
             placeholder="https://…"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <p className="mb-1.5 text-xs font-semibold tracking-wide text-[var(--color-muted-foreground)] uppercase">
+            Social
+          </p>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="instagram">
+            Instagram
+          </label>
+          <div className="relative">
+            <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-[var(--color-muted-foreground)]">
+              @
+            </span>
+            <input
+              id="instagram"
+              className={`${inputClass} pl-7`}
+              value={form.instagram}
+              onChange={(e) => update('instagram', e.target.value)}
+              placeholder="username"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="facebook">
+            Facebook
+          </label>
+          <input
+            id="facebook"
+            className={inputClass}
+            value={form.facebook}
+            onChange={(e) => update('facebook', e.target.value)}
+            placeholder="username"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className={labelClass} htmlFor="linkedin">
+            LinkedIn
+          </label>
+          <input
+            id="linkedin"
+            className={inputClass}
+            value={form.linkedin}
+            onChange={(e) => update('linkedin', e.target.value)}
+            placeholder="profile-slug"
           />
         </div>
 

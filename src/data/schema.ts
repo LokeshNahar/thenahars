@@ -21,6 +21,11 @@ export interface Person {
   location: string | null
   /** Relative path or URL; null falls back to a placeholder avatar. */
   photo: string | null
+  /** Handle/username only, no @ or full URL — e.g. "johndoe". */
+  instagram: string | null
+  facebook: string | null
+  /** LinkedIn public profile slug — e.g. "john-doe-123". */
+  linkedin: string | null
   status: LifeStatus
   /** Reserved for future phone-OTP self-claim. Always false for now. */
   claimed: boolean

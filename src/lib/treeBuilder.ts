@@ -66,3 +66,28 @@ export function findRootId(people: Person[]): string | null {
   const earliest = roots.reduce((min, p) => (p.generation < min.generation ? p : min), roots[0])
   return earliest.nahar_id
 }
+
+/**
+ * Returns every ancestor id (root-first) that must be expanded for
+ * `personId` to be reachable by the lazy-expand tree — i.e. every person
+ * on the path from the root down to (but not including) the target
+ * themself, since expansion state tracks "whose children are visible."
+ * A married-in spouse's own parents array is empty, so this naturally
+ * stops there without special-casing.
+ */
+export function getAncestorChain(personId: string, people: Person[]): string[] {
+  const index = byId(people)
+  const chain: string[] = []
+  const visited = new Set<string>()
+
+  let current = index.get(personId)
+  while (current && current.parents.length > 0) {
+    const parentId = current.parents[0]
+    if (visited.has(parentId)) break // guard against malformed cyclic data
+    visited.add(parentId)
+    chain.unshift(parentId)
+    current = index.get(parentId)
+  }
+
+  return chain
+}

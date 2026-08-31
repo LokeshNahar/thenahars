@@ -10,7 +10,8 @@
 //     else's identity.
 //   - Anyone (including signed-out visitors) can read the directory.
 //   - A signed-in member may write PERSONAL fields only (name, phone,
-//     email, profession, location, photo, status, notes) on:
+//     email, profession, location, photo, instagram, facebook, linkedin,
+//     status, notes) on:
 //       - their own record
 //       - their parents' / spouse's / children's records
 //   - role == "admin" may write anything on any record, including the
@@ -64,7 +65,8 @@ service cloud.firestore {
 
     function onlyPersonalFieldsChanged() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'name', 'phone', 'email', 'profession', 'location', 'photo', 'status', 'notes'
+        'name', 'phone', 'email', 'profession', 'location', 'photo',
+        'instagram', 'facebook', 'linkedin', 'status', 'notes'
       ]);
     }
 

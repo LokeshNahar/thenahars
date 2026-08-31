@@ -9,6 +9,9 @@ export const EDITABLE_PERSONAL_FIELDS = [
   'profession',
   'location',
   'photo',
+  'instagram',
+  'facebook',
+  'linkedin',
   'status',
   'notes',
 ] as const

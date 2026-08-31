@@ -7,6 +7,7 @@ import { canEditPerson } from '../../lib/permissions'
 import { PersonAvatar } from './PersonAvatar'
 import { PersonCard } from './PersonCard'
 import { PersonEditForm } from './PersonEditForm'
+import { SocialLinks } from './SocialLinks'
 import { StatusBadge } from './StatusBadge'
 
 interface PersonDetailProps {
@@ -123,6 +124,7 @@ export function PersonDetail({ person, parents, spouses, offspring, onSaved }: P
                     )
                   })}
               </dl>
+              {user && <SocialLinks person={person} />}
             </div>
           </motion.div>
         )}

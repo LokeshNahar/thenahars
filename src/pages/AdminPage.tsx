@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { doc, writeBatch } from 'firebase/firestore'
-import { Loader2, Search, Shield, ShieldOff } from 'lucide-react'
+import { Loader2, Search, Shield, ShieldOff, Sparkles } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -10,8 +10,16 @@ import { usePeople } from '../hooks/usePeople'
 import { db } from '../lib/firebase'
 import { isAdmin } from '../lib/permissions'
 
-function AdminRow({ person, onSaved }: { person: Person; onSaved: () => void }) {
-  const [email, setEmail] = useState(person.email ?? '')
+function AdminRow({
+  person,
+  addedByName,
+  onSaved,
+}: {
+  person: Person
+  addedByName: string | null
+  onSaved: () => void
+}) {
+  const [email, setEmail] = useState(person.isPlaceholderEmail ? '' : (person.email ?? ''))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,7 +30,12 @@ function AdminRow({ person, onSaved }: { person: Person; onSaved: () => void }) 
     try {
       const trimmed = email.trim().toLowerCase()
       const batch = writeBatch(db)
-      batch.update(doc(db, 'people', person.nahar_id), { email: trimmed || null })
+      batch.update(doc(db, 'people', person.nahar_id), {
+        email: trimmed || null,
+        // Linking a real email — even to a person who previously had a
+        // no-email.* placeholder — means it's no longer a placeholder.
+        isPlaceholderEmail: false,
+      })
 
       const previousEmail = person.email?.toLowerCase()
       if (previousEmail && previousEmail !== trimmed) {
@@ -61,19 +74,33 @@ function AdminRow({ person, onSaved }: { person: Person; onSaved: () => void }) 
   return (
     <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--glass-border)] py-4 last:border-0 sm:grid-cols-[1fr_2fr_auto_auto]">
       <div>
-        <p
-          className={`text-sm font-semibold ${isPlaceholder(person) ? 'text-[var(--color-muted-foreground)] italic' : 'text-[var(--color-foreground)]'}`}
-        >
-          {person.name}
-        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p
+            className={`text-sm font-semibold ${isPlaceholder(person) ? 'text-[var(--color-muted-foreground)] italic' : 'text-[var(--color-foreground)]'}`}
+          >
+            {person.name}
+          </p>
+          {person.isPlaceholderEmail && (
+            <span
+              title="This person has no real email yet — added via self-service without one."
+              className="flex items-center gap-1 rounded-full bg-[var(--color-accent)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]"
+            >
+              <Sparkles size={10} aria-hidden="true" />
+              No email yet
+            </span>
+          )}
+        </div>
         <p className="text-xs text-[var(--color-muted-foreground)]">{person.nahar_id}</p>
+        {addedByName && (
+          <p className="text-xs text-[var(--color-muted-foreground)]">Added by {addedByName}</p>
+        )}
       </div>
 
       <input
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="Not linked"
+        placeholder={person.isPlaceholderEmail ? 'Add their real email…' : 'Not linked'}
         disabled={isPlaceholder(person)}
         className="w-full rounded-xl border border-[var(--glass-border)] bg-[var(--color-background)] px-3 py-1.5 text-sm text-[var(--color-foreground)] disabled:cursor-not-allowed disabled:opacity-50"
       />
@@ -116,17 +143,38 @@ function AdminRow({ person, onSaved }: { person: Person; onSaved: () => void }) 
   )
 }
 
+/** Firestore Timestamps land as {seconds, nanoseconds}-shaped objects with a toMillis(); seed/admin-created records have null. */
+function addedAtMillis(value: unknown): number {
+  if (value && typeof value === 'object' && 'toMillis' in value && typeof value.toMillis === 'function') {
+    return (value as { toMillis: () => number }).toMillis()
+  }
+  return 0
+}
+
 export function AdminPage() {
   const { user, loading: authLoading } = useAuth()
   const { people, loading: peopleLoading, refetch } = usePeople()
   const [query, setQuery] = useState('')
+  const [recentOnly, setRecentOnly] = useState(false)
   const debouncedQuery = useDebouncedValue(query, 200)
 
   const filtered = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase()
-    if (!q) return people
-    return people.filter((p) => p.name.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q))
-  }, [people, debouncedQuery])
+    let result = people
+    if (q) {
+      result = result.filter((p) => p.name.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q))
+    }
+    if (recentOnly) {
+      result = result
+        .filter((p) => p.addedBy != null)
+        .slice()
+        .sort((a, b) => addedAtMillis(b.addedAt) - addedAtMillis(a.addedAt))
+    }
+    return result
+  }, [people, debouncedQuery, recentOnly])
+
+  const recentCount = useMemo(() => people.filter((p) => p.addedBy != null).length, [people])
+  const nameById = useMemo(() => new Map(people.map((p) => [p.nahar_id, p.name])), [people])
 
   if (!authLoading && !isAdmin(user)) {
     return <Navigate to="/" replace />
@@ -148,19 +196,33 @@ export function AdminPage() {
         </p>
       </motion.div>
 
-      <div className="relative mb-6">
-        <Search
-          size={16}
-          className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--color-muted-foreground)]"
-          aria-hidden="true"
-        />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name or email…"
-          className="glass w-full rounded-full py-2.5 pr-4 pl-10 text-sm text-[var(--color-foreground)]"
-        />
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search
+            size={16}
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--color-muted-foreground)]"
+            aria-hidden="true"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name or email…"
+            className="glass w-full rounded-full py-2.5 pr-4 pl-10 text-sm text-[var(--color-foreground)]"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setRecentOnly((v) => !v)}
+          className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors ${
+            recentOnly
+              ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
+              : 'glass text-[var(--color-foreground)] hover:bg-[var(--glass-bg-strong)]'
+          }`}
+        >
+          <Sparkles size={14} aria-hidden="true" />
+          Recently added ({recentCount})
+        </button>
       </div>
 
       <div className="glass-strong rounded-3xl px-6 py-2">
@@ -169,7 +231,14 @@ export function AdminPage() {
         ) : filtered.length === 0 ? (
           <p className="py-8 text-center text-sm text-[var(--color-muted-foreground)]">No matches.</p>
         ) : (
-          filtered.map((person) => <AdminRow key={person.nahar_id} person={person} onSaved={refetch} />)
+          filtered.map((person) => (
+            <AdminRow
+              key={person.nahar_id}
+              person={person}
+              addedByName={person.addedBy ? (nameById.get(person.addedBy) ?? person.addedBy) : null}
+              onSaved={refetch}
+            />
+          ))
         )}
       </div>
     </div>

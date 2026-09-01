@@ -102,7 +102,6 @@ export function AddPersonForm({ anchor, anchorSpouses, relation, onCancel, onSav
         const counterSnap = await tx.get(counterRef)
         const nextSeq = counterSnap.data()!.nextSeq as number
         const id = `N-${String(nextSeq).padStart(4, '0')}`
-        const resolvedEmail = finalEmail ?? placeholderEmail(id)
 
         const parents =
           relation === 'parent'
@@ -146,17 +145,6 @@ export function AddPersonForm({ anchor, anchorSpouses, relation, onCancel, onSav
           isBloodline,
           linkedFamilyOf: null,
           linkedFamilyLabel: null,
-          phone: null,
-          dateOfBirth: null,
-          marriageDate: null,
-          email: resolvedEmail,
-          profession: null,
-          qualification: null,
-          location: null,
-          photo: null,
-          instagram: null,
-          facebook: null,
-          linkedin: null,
           status,
           claimed: false,
           role: 'member',
@@ -164,18 +152,33 @@ export function AddPersonForm({ anchor, anchorSpouses, relation, onCancel, onSav
         return id
       })
 
-      // Second, separate commit: splice the new person into the anchor's
-      // relationship array. Rules require this document to already exist
-      // (a same-commit create isn't visible to the update's rule check —
-      // see PHASE2-ADD-PERSON-PLAN.md), so this must run after Step 1
-      // resolves, not inside the same transaction.
+      // Every write below runs as its own separate commit, after the
+      // person doc above resolves — Firestore rules can't see another
+      // write from the same commit (see PHASE2-ADD-PERSON-PLAN.md), and
+      // the private/details create rule specifically requires the public
+      // doc to already exist.
+      const resolvedEmail = finalEmail ?? placeholderEmail(newId)
+      await setDoc(doc(naharDb, 'people', newId, 'private', 'details'), {
+        phone: null,
+        dateOfBirth: null,
+        marriageDate: null,
+        email: resolvedEmail,
+        profession: null,
+        qualification: null,
+        location: null,
+        photo: null,
+        instagram: null,
+        facebook: null,
+        linkedin: null,
+        notes: null,
+      })
+
       const anchorField = relation === 'parent' ? 'parents' : relation === 'spouse' ? 'spouse' : 'children'
       await updateDoc(doc(naharDb, 'people', anchor.nahar_id), { [anchorField]: arrayUnion(newId) })
       if (relation === 'child' && includeCoParent && coParent) {
         await updateDoc(doc(naharDb, 'people', coParent), { children: arrayUnion(newId) })
       }
 
-      const resolvedEmail = finalEmail ?? placeholderEmail(newId)
       await setDoc(doc(naharDb, 'people_by_email', resolvedEmail), { nahar_id: newId })
 
       onSaved()

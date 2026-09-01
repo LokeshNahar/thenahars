@@ -97,11 +97,19 @@ export function PersonEditForm({ person, spouses, onCancel, onSaved }: PersonEdi
     try {
       const batch = writeBatch(db)
       const personRef = doc(db, 'people', person.nahar_id)
+      const privateRef = doc(db, 'people', person.nahar_id, 'private', 'details')
 
       const marriageDate = spouses.length > 0 ? form.marriageDate || null : person.marriageDate
 
+      // name/status are the only fields still on the public doc — see
+      // firestore.rules' file header for why the rest moved to
+      // private/details (phone/email/DOB/location/etc. are never public).
       batch.update(personRef, {
         name: form.name.trim(),
+        status: form.status,
+      })
+
+      batch.update(privateRef, {
         phone: form.phone.trim() || null,
         dateOfBirth: form.dateOfBirth || null,
         marriageDate,
@@ -113,16 +121,16 @@ export function PersonEditForm({ person, spouses, onCancel, onSaved }: PersonEdi
         instagram: sanitizeHandle(form.instagram) || null,
         facebook: sanitizeHandle(form.facebook) || null,
         linkedin: sanitizeHandle(form.linkedin) || null,
-        status: form.status,
         notes: form.notes.trim() || null,
       })
 
       // A marriage date is a fact about the COUPLE, not just this person —
-      // keep it in sync on every recorded spouse's own record too, since
-      // spouse[] is a symmetric array rather than a shared marriage doc.
+      // keep it in sync on every recorded spouse's own private/details
+      // doc too, since spouse[] is a symmetric array rather than a shared
+      // marriage doc.
       if (spouses.length > 0 && marriageDate !== (spouses[0].marriageDate ?? null)) {
         for (const spouse of spouses) {
-          batch.update(doc(db, 'people', spouse.nahar_id), { marriageDate })
+          batch.update(doc(db, 'people', spouse.nahar_id, 'private', 'details'), { marriageDate })
         }
       }
 

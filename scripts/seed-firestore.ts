@@ -41,9 +41,38 @@ async function seed() {
     process.exit(1)
   }
 
+  // Split each seed record into its public (people/{id}) and private
+  // (people/{id}/private/details) documents — see firestore.rules' file
+  // header for why. PRIVATE_FIELD_KEYS in src/data/schema.ts is the single
+  // source of truth for which keys go where; duplicated here as a plain
+  // array since this script runs outside Vite and can't import a .ts
+  // module path that itself imports browser-only Firebase client code.
+  const PRIVATE_FIELD_KEYS = [
+    'phone',
+    'dateOfBirth',
+    'marriageDate',
+    'email',
+    'profession',
+    'qualification',
+    'location',
+    'photo',
+    'instagram',
+    'facebook',
+    'linkedin',
+    'notes',
+  ]
+
   const batch = db.batch()
   for (const person of people) {
-    batch.set(db.collection('people').doc(person.nahar_id), person)
+    const pub: Record<string, unknown> = {}
+    const priv: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(person)) {
+      if (PRIVATE_FIELD_KEYS.includes(key)) priv[key] = value
+      else pub[key] = value
+    }
+
+    batch.set(db.collection('people').doc(person.nahar_id), pub)
+    batch.set(db.collection('people').doc(person.nahar_id).collection('private').doc('details'), priv)
     if (person.email) {
       batch.set(db.collection('people_by_email').doc(person.email.toLowerCase()), {
         nahar_id: person.nahar_id,

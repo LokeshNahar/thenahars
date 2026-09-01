@@ -91,7 +91,6 @@ export function LinkFamilyRootForm({ anchor, onCancel, onSaved }: LinkFamilyRoot
         const counterSnap = await tx.get(counterRef)
         const nextSeq = counterSnap.data()!.nextSeq as number
         const id = `N-${String(nextSeq).padStart(4, '0')}`
-        const resolvedEmail = finalEmail ?? placeholderEmail(id)
 
         tx.update(counterRef, { nextSeq: nextSeq + 1 })
         tx.set(doc(naharDb, 'people', id), {
@@ -108,17 +107,6 @@ export function LinkFamilyRootForm({ anchor, onCancel, onSaved }: LinkFamilyRoot
           isBloodline: false,
           linkedFamilyOf: anchor.nahar_id,
           linkedFamilyLabel: trimmedLabel,
-          phone: null,
-          dateOfBirth: null,
-          marriageDate: null,
-          email: resolvedEmail,
-          profession: null,
-          qualification: null,
-          location: null,
-          photo: null,
-          instagram: null,
-          facebook: null,
-          linkedin: null,
           status: 'living',
           claimed: false,
           role: 'member',
@@ -126,7 +114,24 @@ export function LinkFamilyRootForm({ anchor, onCancel, onSaved }: LinkFamilyRoot
         return id
       })
 
+      // Separate commit, after the person doc above resolves — see
+      // firestore.rules' file header and PHASE2-ADD-PERSON-PLAN.md for why
+      // this can't be the same commit as the create above.
       const resolvedEmail = finalEmail ?? placeholderEmail(newId)
+      await setDoc(doc(naharDb, 'people', newId, 'private', 'details'), {
+        phone: null,
+        dateOfBirth: null,
+        marriageDate: null,
+        email: resolvedEmail,
+        profession: null,
+        qualification: null,
+        location: null,
+        photo: null,
+        instagram: null,
+        facebook: null,
+        linkedin: null,
+        notes: null,
+      })
       await setDoc(doc(naharDb, 'people_by_email', resolvedEmail), { nahar_id: newId })
 
       onSaved(newId)

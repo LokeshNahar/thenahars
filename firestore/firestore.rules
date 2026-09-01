@@ -1,21 +1,42 @@
-// Deployed rules. See PHASE2-PLAN.md and PHASE2-ADD-PERSON-PLAN.md for the
-// full design rationale.
+// Deployed rules. See PHASE2-PLAN.md, PHASE2-ADD-PERSON-PLAN.md, and
+// SECURITY-PRIVATE-SPLIT.md for the full design rationale.
+//
+// PRIVACY BOUNDARY (read this first): `people/{naharId}` is PUBLIC to any
+// signed-in visitor — it holds name/relationships/status only, nothing
+// sensitive. Every field that could identify or contact someone in the
+// real world (phone, email, date of birth, marriage date, location,
+// profession, qualification, photo, socials, notes) lives instead in the
+// `people/{naharId}/private/details` subcollection, which only an admin or
+// any matched member (a signed-in visitor whose own email resolves to a
+// Person via people_by_email) may read. An anonymous visitor, or a
+// signed-in visitor who has never been approved, gets the public shape
+// only — never the private one. This split exists because Firestore rules
+// can't hide individual fields within one document read; splitting into
+// two documents is the only way to actually enforce "structure is public,
+// contact details are not" at the database level, rather than trusting
+// the UI to hide fields it already received.
 //
 // Model:
-//   - `people/{naharId}` mirrors the Person shape in src/data/schema.ts.
+//   - `people/{naharId}` mirrors PublicPerson in src/data/schema.ts.
+//   - `people/{naharId}/private/details` mirrors PrivatePersonDetails.
 //   - `people_by_email/{emailLowercased}` is a denormalized lookup doc
 //     `{ nahar_id }`, kept in sync by the app itself (writeBatch/transaction)
 //     whenever a person's email changes or a new person is created — no
 //     Cloud Function. Writes are validated so a client can't forge a
-//     lookup pointing at someone else's identity.
+//     lookup pointing at someone else's identity. Readable only by an
+//     admin or the account whose own email it is — nobody needs to read
+//     someone ELSE's email-to-id mapping client-side, and that mapping is
+//     itself a list of real email addresses, which is exactly the kind of
+//     thing a scraper would want.
 //   - `meta/id_counter` reserves collision-safe sequential "N-00xx" ids via
 //     a client-side Firestore transaction.
-//   - Anyone (including signed-out visitors) can read the directory.
-//   - A signed-in member may write PERSONAL fields only (name, phone,
-//     email, profession, qualification, location, photo, instagram,
-//     facebook, linkedin, status, notes) on: their own record, their
-//     parents'/spouse's/children's records, or the root of a linked
-//     external family they connect through (linkedFamilyOf == their id).
+//   - A signed-in member may write PERSONAL fields only (phone, email,
+//     dateOfBirth, marriageDate, profession, qualification, location,
+//     photo, instagram, facebook, linkedin, notes — the private-subdoc
+//     fields; `name` and `status` stay on the public doc and are edited
+//     there) on: their own record, their parents'/spouse's/children's
+//     records, or the root of a linked external family they connect
+//     through (linkedFamilyOf == their id).
 //   - A signed-in member may CREATE a new person anchored on anyone they
 //     can already edit (self/immediate relative/linked-family root) —
 //     claiming exactly one relationship (parent, spouse, or child) to that
@@ -23,15 +44,20 @@
 //     how arbitrarily deep chains (grandchild, great-grandchild, a child's
 //     spouse, a sibling via a shared parent's page, ...) stay correct
 //     without recursion in rules: each addition is anchored on the actual
-//     intermediate person's own record.
+//     intermediate person's own record. The client writes both the public
+//     doc and its private/details subdoc as two separate, sequential
+//     writes (never the same atomic commit — a rule's get()/exists() can't
+//     see another write from the same commit, so this was always true even
+//     before the private split, see PHASE2-ADD-PERSON-PLAN.md).
 //   - A signed-in member may then splice that brand-new person into their
 //     own (or the anchor's) parents/spouse/children array — but ONLY as a
 //     single addition of a person whose addedBy is themself, never a
 //     re-link of two pre-existing people. Re-linking existing people, and
 //     any other relationship-array change, stays admin-only.
-//   - role == "admin" may write anything on any record, including the
-//     relationship arrays (parents/spouse/children), nahar_id, claimed,
-//     role, isBloodline, and can create/delete freely.
+//   - role == "admin" may write anything on any record (public or
+//     private), including the relationship arrays (parents/spouse/
+//     children), nahar_id, claimed, role, isBloodline, and can
+//     create/delete freely.
 //   - isBloodline marks whether a person was born a Nahar (their own
 //     parents-if-added extend the MAIN tree) vs. married in from outside
 //     (their own parents-if-added must form a linked EXTERNAL branch
@@ -92,10 +118,19 @@ service cloud.firestore {
       return isAdmin() || isSelf(targetId) || isImmediateRelative(target);
     }
 
-    function onlyPersonalFieldsChanged() {
+    // The public doc's only non-admin-editable fields are `name` and
+    // `status` — the two PersonEditForm fields that were never sensitive
+    // and so stay on the public doc rather than moving to private/details.
+    function onlyPublicPersonalFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'status']);
+    }
+
+    // Every field on the private/details subdoc is self-service-editable
+    // by whoever can already edit the parent Person.
+    function onlyPrivateFieldsChanged() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'name', 'phone', 'dateOfBirth', 'marriageDate', 'email', 'profession', 'qualification', 'location',
-        'photo', 'instagram', 'facebook', 'linkedin', 'status', 'notes'
+        'phone', 'dateOfBirth', 'marriageDate', 'email', 'profession', 'qualification', 'location',
+        'photo', 'instagram', 'facebook', 'linkedin', 'notes'
       ]);
     }
 
@@ -230,8 +265,23 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/people/$(personId)).data.addedBy == me.nahar_id;
     }
 
+    // The private/details read boundary: admin, or any matched member
+    // (deliberately not relatives-only — see the file header). Factored
+    // out as its own function so the nested people/{naharId}/private/
+    // details rule and the top-level collectionGroup wildcard rule below
+    // can never drift apart — they call this exact same check, not two
+    // independently-maintained copies of it.
+    function canReadPrivateDetails() {
+      return isAdmin() || callerPerson() != null;
+    }
+
     match /people/{naharId} {
-      allow read: if true;
+      // Public shape only — no phone/email/DOB/location/etc. here, so
+      // requiring only "signed in" (not "matched") is safe: this is what
+      // lets an unmatched visitor's claim form and the tree/directory
+      // shape work before they're approved, without exposing anyone's
+      // contact details to a stranger who just made a Google account.
+      allow read: if signedInEmail() != null;
 
       allow create: if isAdmin() || (
         signedInEmail() != null
@@ -246,9 +296,49 @@ service cloud.firestore {
 
       allow update: if signedInEmail() != null
         && canEditPerson(naharId, resource.data)
-        && (isAdmin() || onlyPersonalFieldsChanged() || relationshipAdditionIsValid());
+        && (isAdmin() || onlyPublicPersonalFieldsChanged() || relationshipAdditionIsValid());
 
       allow delete: if isAdmin();
+
+      // The actually-sensitive fields — see the file header. Readable only
+      // by an admin or any matched member (not merely "signed in"), which
+      // is the real privacy boundary this whole split exists to enforce.
+      match /private/details {
+        allow read: if canReadPrivateDetails();
+
+        // Created in the same two-write pattern as the parent Person (see
+        // the file header) — by whoever is creating naharId itself, i.e.
+        // anyone who could create the parent doc under the same rules.
+        allow create: if isAdmin() || (
+          signedInEmail() != null
+          && exists(/databases/$(database)/documents/people/$(naharId))
+          && get(/databases/$(database)/documents/people/$(naharId)).data.addedBy == callerPerson().nahar_id
+        );
+
+        allow update: if signedInEmail() != null
+          && exists(/databases/$(database)/documents/people/$(naharId))
+          && canEditPerson(naharId, get(/databases/$(database)/documents/people/$(naharId)).data)
+          && (isAdmin() || onlyPrivateFieldsChanged());
+
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Firestore rule scoping gotcha, documented here so it's never
+    // "silently re-broken": the nested `match /people/{naharId}/private/
+    // details` rule above governs reads that go through that exact path
+    // (a single getDoc(), or a query scoped to one person's own private
+    // subcollection) — it does NOT automatically cover a collectionGroup()
+    // query across every person's private/details doc at once, which is
+    // what src/lib/dataSource.ts uses to fetch everyone's private fields
+    // in one round trip. A collectionGroup query needs its own top-level
+    // wildcard rule to be evaluated against at all; without this block,
+    // such a query is denied outright regardless of the nested rule
+    // above, which is exactly the bug this comment exists to prevent
+    // recurring. Delegates to the same canReadPrivateDetails() the nested
+    // rule uses, so the two can never drift into different boundaries.
+    match /{path=**}/private/{document} {
+      allow read: if canReadPrivateDetails();
     }
 
     // Sequential-id reservation counter, incremented inside the same
@@ -295,7 +385,13 @@ service cloud.firestore {
     }
 
     match /people_by_email/{email} {
-      allow read: if request.auth != null;
+      // Nobody needs to read someone ELSE's email-to-id mapping
+      // client-side — the app only ever looks up its own signed-in user's
+      // email (AuthContext) or an admin acting on a specific known email
+      // (AdminPage). Scoping this to "your own email, or an admin" closes
+      // the scrape-every-real-email-address hole a blanket
+      // request.auth != null left open.
+      allow read: if isAdmin() || (signedInEmail() != null && email == signedInEmail());
       allow write: if signedInEmail() != null && (
         isAdmin() ||
         (

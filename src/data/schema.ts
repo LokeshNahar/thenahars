@@ -2,7 +2,13 @@ export type Gender = 'male' | 'female' | 'other'
 export type LifeStatus = 'living' | 'late'
 export type MemberRole = 'member' | 'admin'
 
-export interface Person {
+/**
+ * The document at `people/{naharId}` — readable by any signed-in visitor
+ * (even unmatched ones), because the tree's shape and the claim-matching
+ * flow both need it. Deliberately holds NOTHING sensitive: no phone,
+ * email, birth date, or location. See PrivatePersonDetails for those.
+ */
+export interface PublicPerson {
   /** Primary key. Sequential, zero-padded: "N-0001". Never reused or renumbered. */
   nahar_id: string
   name: string
@@ -18,7 +24,7 @@ export interface Person {
   addedBy: string | null
   /** Firestore server timestamp of creation via the app; null for seed/admin-created records. */
   addedAt: unknown
-  /** True only when `email` is a system-generated placeholder, not a real address. */
+  /** True only when the private doc's `email` is a system-generated placeholder, not a real address. */
   isPlaceholderEmail: boolean
   /**
    * True if this person was born into the Nahar bloodline (so their own
@@ -38,18 +44,34 @@ export interface Person {
   linkedFamilyOf: string | null
   /** Short label for a linked-family root's toggle/breadcrumb, e.g. "Mother's Family". */
   linkedFamilyLabel: string | null
+  status: LifeStatus
+  /** Reserved for future phone-OTP self-claim. Always false for now. */
+  claimed: boolean
+  /** Reserved for future auth. Always "member" in seed data. */
+  role: MemberRole
+}
+
+/**
+ * The document at `people/{naharId}/private/details` — every field a
+ * stranger should never see. Readable only by admins and any matched
+ * member (see firestore.rules), never by an anonymous or unmatched
+ * visitor. This is the actual privacy boundary; PublicPerson exists
+ * purely so the tree's shape and name-based claim matching still work
+ * without exposing anyone's contact details.
+ */
+export interface PrivatePersonDetails {
   phone: string | null
   /** ISO yyyy-mm-dd, so it sorts/compares naturally. Rendered as dd-mm-yyyy. */
   dateOfBirth: string | null
   /**
    * ISO yyyy-mm-dd wedding date, so it sorts/compares naturally. Rendered
    * as dd-mm-yyyy. A fact about the COUPLE, not just this person — kept in
-   * sync on both spouses' records by the same edit (see PersonEditForm),
-   * since spouse[] is a symmetric array rather than a shared marriage
-   * record. Only meaningful when `spouse` is non-empty; editing it when a
-   * person has more than one spouse recorded is a not-yet-modeled edge
-   * case (assumes exactly one marriage per person, like the rest of this
-   * schema does today).
+   * sync on both spouses' private docs by the same edit (see
+   * PersonEditForm), since spouse[] is a symmetric array rather than a
+   * shared marriage record. Only meaningful when `spouse` is non-empty;
+   * editing it when a person has more than one spouse recorded is a
+   * not-yet-modeled edge case (assumes exactly one marriage per person,
+   * like the rest of this schema does today).
    */
   marriageDate: string | null
   email: string | null
@@ -65,14 +87,35 @@ export interface Person {
   facebook: string | null
   /** LinkedIn public profile slug — e.g. "john-doe-123". */
   linkedin: string | null
-  status: LifeStatus
-  /** Reserved for future phone-OTP self-claim. Always false for now. */
-  claimed: boolean
-  /** Reserved for future auth. Always "member" in seed data. */
-  role: MemberRole
   /** Free text, e.g. marking a stub/placeholder record. */
   notes?: string
 }
+
+/** Every PrivatePersonDetails key, for building Firestore payloads and the write-side field allowlist. */
+export const PRIVATE_FIELD_KEYS = [
+  'phone',
+  'dateOfBirth',
+  'marriageDate',
+  'email',
+  'profession',
+  'qualification',
+  'location',
+  'photo',
+  'instagram',
+  'facebook',
+  'linkedin',
+  'notes',
+] as const satisfies readonly (keyof PrivatePersonDetails)[]
+
+/**
+ * The merged, client-facing shape every component actually works with —
+ * PublicPerson + PrivatePersonDetails combined by the data layer
+ * (src/lib/dataSource.ts) after two separate, separately-authorized
+ * Firestore reads. For a caller who can't read the private subcollection
+ * (unmatched/anonymous), every PrivatePersonDetails field comes back null
+ * rather than the read failing — see mergePersonDocs().
+ */
+export interface Person extends PublicPerson, PrivatePersonDetails {}
 
 /** Records with this name are undocumented placeholders, not real people. */
 export const PLACEHOLDER_NAME = 'Details coming soon'

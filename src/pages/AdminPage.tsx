@@ -66,6 +66,7 @@ function AdminRow({
         batch.delete(doc(db, 'people_by_email', person.email.toLowerCase()))
       }
 
+      batch.delete(doc(db, 'people', person.nahar_id, 'private', 'details'))
       batch.delete(doc(db, 'people', person.nahar_id))
       await batch.commit()
       onSaved()
@@ -83,12 +84,12 @@ function AdminRow({
     try {
       const trimmed = email.trim().toLowerCase()
       const batch = writeBatch(db)
-      batch.update(doc(db, 'people', person.nahar_id), {
-        email: trimmed || null,
-        // Linking a real email — even to a person who previously had a
-        // no-email.* placeholder — means it's no longer a placeholder.
-        isPlaceholderEmail: false,
-      })
+      // Linking a real email — even to a person who previously had a
+      // no-email.* placeholder — means it's no longer a placeholder.
+      // isPlaceholderEmail stays on the public doc (it's not sensitive);
+      // the actual email address lives in private/details.
+      batch.update(doc(db, 'people', person.nahar_id), { isPlaceholderEmail: false })
+      batch.update(doc(db, 'people', person.nahar_id, 'private', 'details'), { email: trimmed || null })
 
       const previousEmail = person.email?.toLowerCase()
       if (previousEmail && previousEmail !== trimmed) {
@@ -319,9 +320,11 @@ function ClaimRow({
     try {
       const batch = writeBatch(db)
       batch.update(doc(db, 'people', selectedPerson.nahar_id), {
-        email: claim.email,
         isPlaceholderEmail: false,
         claimed: true,
+      })
+      batch.update(doc(db, 'people', selectedPerson.nahar_id, 'private', 'details'), {
+        email: claim.email,
       })
       const previousEmail = selectedPerson.email?.toLowerCase()
       if (previousEmail && previousEmail !== claim.email) {

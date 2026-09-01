@@ -37,7 +37,8 @@ async function bootstrap() {
 
   const lowerEmail = email.toLowerCase()
   const batch = db.batch()
-  batch.update(personRef, { email: lowerEmail, role: 'admin', claimed: true })
+  batch.update(personRef, { role: 'admin', claimed: true })
+  batch.set(personRef.collection('private').doc('details'), { email: lowerEmail }, { merge: true })
   batch.set(db.collection('people_by_email').doc(lowerEmail), { nahar_id: naharId })
   await batch.commit()
 

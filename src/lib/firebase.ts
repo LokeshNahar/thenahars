@@ -1,4 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check'
 import { getAuth, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 import { getStorage, type FirebaseStorage } from 'firebase/storage'
@@ -37,3 +38,36 @@ if (app) {
   }
 }
 export const storage: FirebaseStorage | null = storageInstance
+
+/**
+ * App Check attaches a per-request attestation token so Firestore/Auth can
+ * tell "a real build of this app, running in a real browser" apart from a
+ * scripted client hitting the API directly — closes the low-severity
+ * "no rate limit on writes" gap from the security audit (App Check itself
+ * doesn't rate-limit, but it's what makes Firestore's abuse protections
+ * apply only to genuine traffic instead of anyone with the public API key).
+ *
+ * Free on Spark. Only initializes when VITE_RECAPTCHA_SITE_KEY is set — a
+ * reCAPTCHA v3 site key from Firebase Console -> App Check -> Apps ->
+ * (this web app) -> reCAPTCHA v3 provider. Until that key is added to
+ * .env.local, this silently no-ops (appCheck stays null) rather than
+ * breaking the build or blocking anyone — App Check enforcement is a
+ * separate, per-service toggle in the Console (Firestore/Auth -> App
+ * Check -> Enforce), left OFF by default, so initializing the SDK here is
+ * safe on its own: it starts attaching tokens, but nothing rejects a
+ * request without one until enforcement is explicitly turned on later.
+ */
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined
+let appCheckInstance: AppCheck | null = null
+if (app && recaptchaSiteKey) {
+  try {
+    appCheckInstance = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    })
+  } catch (err) {
+    console.error('Failed to initialize App Check:', err)
+    appCheckInstance = null
+  }
+}
+export const appCheck: AppCheck | null = appCheckInstance

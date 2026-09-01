@@ -11,6 +11,8 @@ import { MagneticButton } from '../ui/MagneticButton'
 interface AddPersonFormProps {
   /** The existing person this new relationship is anchored on. */
   anchor: Person
+  /** Anchor's recorded spouse(s), needed to resolve the co-parent's own isBloodline for the child case. */
+  anchorSpouses: Person[]
   relation: RelationKind
   onCancel: () => void
   onSaved: () => void
@@ -40,7 +42,7 @@ function initialsOf(name: string): string {
   return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase()
 }
 
-export function AddPersonForm({ anchor, relation, onCancel, onSaved }: AddPersonFormProps) {
+export function AddPersonForm({ anchor, anchorSpouses, relation, onCancel, onSaved }: AddPersonFormProps) {
   const { user } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -51,7 +53,8 @@ export function AddPersonForm({ anchor, relation, onCancel, onSaved }: AddPerson
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const coParent = relation === 'child' && anchor.spouse.length > 0 ? anchor.spouse[0] : null
+  const coParentPerson = relation === 'child' ? (anchorSpouses[0] ?? null) : null
+  const coParent = coParentPerson?.nahar_id ?? null
 
   function handleNoEmailYet() {
     setUsingPlaceholder(true)
@@ -83,6 +86,12 @@ export function AddPersonForm({ anchor, relation, onCancel, onSaved }: AddPerson
       setError('Not connected — try signing in again.')
       return
     }
+    if (relation === 'parent' && !anchor.isBloodline) {
+      setError(
+        `${anchor.name.split(' ')[0]} married into the family — use "Link Another Family" below to add their parents.`,
+      )
+      return
+    }
 
     setSaving(true)
     try {
@@ -111,6 +120,16 @@ export function AddPersonForm({ anchor, relation, onCancel, onSaved }: AddPerson
             : relation === 'child'
               ? anchor.generation + 1
               : anchor.generation
+        // A new parent always extends the same blood line upward (only
+        // reachable when anchor.isBloodline is already true — checked
+        // above). A new spouse is always married-in, never bloodline. A
+        // new child is bloodline if either parent is.
+        const isBloodline =
+          relation === 'parent'
+            ? true
+            : relation === 'spouse'
+              ? false
+              : anchor.isBloodline || !!coParentPerson?.isBloodline
 
         tx.update(counterRef, { nextSeq: nextSeq + 1 })
         tx.set(doc(naharDb, 'people', id), {
@@ -124,6 +143,7 @@ export function AddPersonForm({ anchor, relation, onCancel, onSaved }: AddPerson
           addedBy: user.naharId,
           addedAt: serverTimestamp(),
           isPlaceholderEmail: usingPlaceholder,
+          isBloodline,
           linkedFamilyOf: null,
           linkedFamilyLabel: null,
           phone: null,

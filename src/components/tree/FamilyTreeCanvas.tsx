@@ -73,6 +73,19 @@ export function FamilyTreeCanvas({ people, focusId, rootIdOverride }: FamilyTree
     : null
   const linkedFamilyAnchor = openLinkedFamilyId ? people.find((p) => p.nahar_id === openLinkedFamilyId) : null
 
+  // When THIS canvas itself is rendering a linked-family branch (i.e. it
+  // was mounted with rootIdOverride pointing at a linkedFamilyOf root),
+  // the anchor who connects that branch to the main tree may appear
+  // inside it as one of their parents' children (e.g. Vanita, shown among
+  // her siblings). That anchor's own children/spouse belong to the MAIN
+  // tree, not this branch — expanding them here would pull the whole main
+  // Nahar tree into this "folded away" view, exactly what the fold/reveal
+  // design exists to prevent. So the anchor renders read-only here.
+  const readOnlyIds = useMemo(() => {
+    const anchorId = rootIdOverride ? people.find((p) => p.nahar_id === rootIdOverride)?.linkedFamilyOf : null
+    return anchorId ? new Set([anchorId]) : new Set<string>()
+  }, [people, rootIdOverride])
+
   const toggle = useCallback((id: string) => {
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -120,8 +133,8 @@ export function FamilyTreeCanvas({ people, focusId, rootIdOverride }: FamilyTree
   }, [focusId, pinchReady])
 
   const root = useMemo(
-    () => (rootId ? buildFamilyUnit(rootId, people, expanded) : null),
-    [rootId, people, expanded],
+    () => (rootId ? buildFamilyUnit(rootId, people, expanded, undefined, readOnlyIds) : null),
+    [rootId, people, expanded, readOnlyIds],
   )
   const positioned = useMemo(() => (root ? layoutTree(root) : []), [root])
 
@@ -232,6 +245,7 @@ export function FamilyTreeCanvas({ people, focusId, rootIdOverride }: FamilyTree
                   focused={p.unit.id === focusedNodeId}
                   linkedFamilyByPersonId={linkedFamilyByPersonId}
                   onOpenLinkedFamily={linkedFamilyByPersonId.size > 0 ? setOpenLinkedFamilyId : undefined}
+                  mainTreeAnchorId={readOnlyIds.size > 0 ? [...readOnlyIds][0] : undefined}
                 />
               ))}
             </AnimatePresence>

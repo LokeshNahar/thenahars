@@ -66,21 +66,25 @@ function RelationSection({
   people,
   canAdd,
   onAdd,
+  hideAddTile = false,
 }: {
   relation: RelationKind
   people: Person[]
   canAdd: boolean
   onAdd: () => void
+  /** True when this relation's "+ Add" tile is handled by a different entry point instead (e.g. parents of a married-in person route through "Link Another Family"). */
+  hideAddTile?: boolean
 }) {
   const { singular, plural } = RELATION_TITLE[relation]
-  if (people.length === 0 && !canAdd) return null
+  const effectiveCanAdd = canAdd && !hideAddTile
+  if (people.length === 0 && !effectiveCanAdd) return null
 
   // Caps on how many of a relation this form offers to add at once — a
   // person has at most one recorded spouse and exactly two parents in
   // this UI's common flow (adding a third is an admin/edge case, not
   // something this self-service tile should invite).
   const atCap = (relation === 'spouse' && people.length >= 1) || (relation === 'parent' && people.length >= 2)
-  const showAddTile = canAdd && !atCap
+  const showAddTile = effectiveCanAdd && !atCap
 
   return (
     <div>
@@ -111,6 +115,12 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
     () => people.find((p) => p.linkedFamilyOf === person.nahar_id) ?? null,
     [people, person.nahar_id],
   )
+
+  // A married-in person's own parents must form a linked branch, not plain
+  // main-tree parents — so once they have no parents recorded yet, the
+  // "Parent" section's own add-tile is hidden in favor of "Link Another
+  // Family" below, which is what actually creates the right kind of record.
+  const parentsRouteThroughLinkedFamily = !person.isBloodline && parents.length === 0
 
   function handleSaved() {
     setAddingRelation(null)
@@ -144,6 +154,7 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
           <AddPersonForm
             key="add"
             anchor={person}
+            anchorSpouses={spouses}
             relation={addingRelation}
             onCancel={() => setAddingRelation(null)}
             onSaved={handleSaved}
@@ -217,6 +228,7 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
             people={parents}
             canAdd={canAddRelationship(user, person, 'parent')}
             onAdd={() => setAddingRelation('parent')}
+            hideAddTile={parentsRouteThroughLinkedFamily}
           />
           <RelationSection
             relation="spouse"
@@ -234,7 +246,9 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
           {(linkedFamilyRoot || canLinkFamily) && (
             <div className="flex flex-col items-center gap-3 border-t border-[var(--glass-border)] pt-8 text-center">
               <p className="text-xs text-[var(--color-muted-foreground)]">
-                A separate lineage connected through {person.name.split(' ')[0]}, tucked away until opened.
+                {parentsRouteThroughLinkedFamily
+                  ? `${person.name.split(' ')[0]} married into the Nahar family — their own parents and extended family live in a separate branch here, tucked away until opened.`
+                  : `A separate lineage connected through ${person.name.split(' ')[0]}, tucked away until opened.`}
               </p>
               {linkedFamilyRoot ? (
                 <LinkedFamilyToggle
@@ -248,7 +262,9 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
                   className="flex cursor-pointer items-center gap-2 rounded-full border border-dashed border-[var(--glass-border)] px-4 py-2 text-sm font-medium text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
                 >
                   <UserPlus size={14} aria-hidden="true" />
-                  Link Another Family
+                  {parentsRouteThroughLinkedFamily
+                    ? `Add ${person.name.split(' ')[0]}'s Parents`
+                    : 'Link Another Family'}
                 </button>
               )}
             </div>

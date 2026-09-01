@@ -105,6 +105,7 @@ export function LinkFamilyRootForm({ anchor, onCancel, onSaved }: LinkFamilyRoot
           addedBy: user.naharId,
           addedAt: serverTimestamp(),
           isPlaceholderEmail: usingPlaceholder,
+          isBloodline: false,
           linkedFamilyOf: anchor.nahar_id,
           linkedFamilyLabel: trimmedLabel,
           phone: null,

@@ -1,22 +1,16 @@
 /**
- * Exercises the linked-family-root Firestore rules as a real signed-in
- * client would — not an Admin SDK bypass. Verifies:
- *   1. A linked member can create a linkedFamilyOf-rooted person anchored
- *      on themself (single commit — no reverse-link step, since nothing
- *      points back at a linked root by design).
- *   2. The people_by_email doc for the new root can be created.
- *   3. That same member CANNOT create a linked-family root anchored on an
- *      unrelated stranger.
- *   4. findRootId-equivalent check: the linked root is NOT reachable via
- *      parents/spouse/children traversal from the main tree (it has empty
- *      relationship arrays and only linkedFamilyOf set).
+ * Verifies the isBloodline boundary added to newParentIsValid/newChildIsValid/
+ * newSpouseIsValid/newLinkedFamilyRootIsValid: a married-in (non-bloodline)
+ * person's own "Add Parent" must be REJECTED by rules (their parents must go
+ * through the linked-family-root path instead), while a bloodline person's
+ * "Add Parent" succeeds and the new parent correctly inherits isBloodline.
  *
- * Cleans up everything it creates. Run against thenahars-dev only.
+ * Run against thenahars-dev only. Cleans up everything it creates.
  *
  * Usage:
  *   GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json \
  *   TEST_FIREBASE_API_KEY=<web api key from .env.local> \
- *     npx tsx scripts/test-linked-family-rules.ts
+ *     npx tsx scripts/test-bloodline-rules.ts
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -47,16 +41,16 @@ const clientApp = initializeApp({ projectId, apiKey })
 const clientAuth = getAuth(clientApp)
 const db = getFirestore(clientApp)
 
-const TEST_EMAIL = 'test-linked-family-verify@example.com'
-const ANCHOR_ID = 'N-TEST-ANCHOR'
-const STRANGER_ID = 'N-TEST-STRANGER-LF'
+const TEST_EMAIL = 'test-bloodline-verify@example.com'
+const BLOODLINE_ANCHOR_ID = 'N-TEST-BLOODLINE'
+const MARRIED_IN_ANCHOR_ID = 'N-TEST-MARRIED-IN'
 
 async function personDoc(id: string, overrides: Record<string, unknown>) {
   return {
     nahar_id: id,
     name: 'Test Person',
     gender: 'other',
-    generation: 1,
+    generation: 2,
     parents: [],
     spouse: [],
     children: [],
@@ -90,25 +84,42 @@ async function main() {
 
   await adminDb
     .collection('people')
-    .doc(ANCHOR_ID)
-    .set(await personDoc(ANCHOR_ID, { name: 'Test Anchor', email: TEST_EMAIL, claimed: true }))
+    .doc(BLOODLINE_ANCHOR_ID)
+    .set(
+      await personDoc(BLOODLINE_ANCHOR_ID, {
+        name: 'Test Bloodline Anchor',
+        email: TEST_EMAIL,
+        claimed: true,
+        isBloodline: true,
+      }),
+    )
   await adminDb
     .collection('people')
-    .doc(STRANGER_ID)
-    .set(await personDoc(STRANGER_ID, { name: 'Test Stranger' }))
-  await adminDb.collection('people_by_email').doc(TEST_EMAIL).set({ nahar_id: ANCHOR_ID })
+    .doc(MARRIED_IN_ANCHOR_ID)
+    .set(
+      await personDoc(MARRIED_IN_ANCHOR_ID, {
+        name: 'Test Married-In Anchor',
+        spouse: [BLOODLINE_ANCHOR_ID],
+        isBloodline: false,
+      }),
+    )
+  await adminDb
+    .collection('people')
+    .doc(BLOODLINE_ANCHOR_ID)
+    .update({ spouse: [MARRIED_IN_ANCHOR_ID] })
+  await adminDb.collection('people_by_email').doc(TEST_EMAIL).set({ nahar_id: BLOODLINE_ANCHOR_ID })
 
   console.log('Signing in as the test client...')
   const customToken = await adminAuth.createCustomToken(authUser.uid)
   await signInWithCustomToken(clientAuth, customToken)
   console.log('Signed in as', clientAuth.currentUser?.uid)
 
-  let rootId: string | null = null
+  let bloodlineParentId: string | null = null
   let ok = true
 
   try {
-    console.log("\nTest 1: create a linked-family root anchored on self (Test Anchor's mother)...")
-    rootId = await runTransaction(db, async (tx) => {
+    console.log('\nTest 1: add a parent to the BLOODLINE anchor (should succeed, isBloodline == true)...')
+    bloodlineParentId = await runTransaction(db, async (tx) => {
       const counterRef = doc(db, 'meta', 'id_counter')
       const counterSnap = await tx.get(counterRef)
       const nextSeq = counterSnap.data()!.nextSeq as number
@@ -117,83 +128,88 @@ async function main() {
       tx.set(
         doc(db, 'people', newId),
         await personDoc(newId, {
-          name: 'Test Linked Root',
+          name: 'Test Bloodline Grandparent',
           generation: 1,
-          addedBy: ANCHOR_ID,
+          children: [BLOODLINE_ANCHOR_ID],
+          addedBy: BLOODLINE_ANCHOR_ID,
           addedAt: serverTimestamp(),
           isPlaceholderEmail: true,
-          isBloodline: false,
-          linkedFamilyOf: ANCHOR_ID,
-          linkedFamilyLabel: "Anchor's Family",
+          isBloodline: true,
           email: `no-email.${newId.toLowerCase()}@thenahars.placeholder`,
         }),
       )
       return newId
     })
-    console.log('PASS — created', rootId)
-
-    console.log('\nTest 2: separate commit — create people_by_email for the new root...')
-    await setDoc(doc(db, 'people_by_email', `no-email.${rootId.toLowerCase()}@thenahars.placeholder`), {
-      nahar_id: rootId,
-    })
-    console.log('PASS')
+    console.log('PASS — created', bloodlineParentId)
   } catch (err) {
-    console.error('FAIL — expected Tests 1-2 to succeed:', err)
+    console.error('FAIL — expected Test 1 to succeed:', err)
     ok = false
   }
 
   console.log(
-    '\nTest 3: attempt to create a linked-family root anchored on an unrelated stranger (should fail)...',
+    '\nTest 2: attempt to add a plain parent to the MARRIED-IN anchor (should FAIL — must use linked-family-root instead)...',
   )
   try {
+    const counterSnap = await adminDb.collection('meta').doc('id_counter').get()
+    const nextSeq = counterSnap.data()!.nextSeq as number
+    const rejectedId = `N-${String(nextSeq).padStart(4, '0')}`
     await setDoc(
-      doc(db, 'people', 'N-TEST-LF-SHOULD-FAIL'),
-      await personDoc('N-TEST-LF-SHOULD-FAIL', {
+      doc(db, 'people', rejectedId),
+      await personDoc(rejectedId, {
         name: 'Should Not Exist',
         generation: 1,
-        addedBy: ANCHOR_ID,
+        children: [MARRIED_IN_ANCHOR_ID],
+        addedBy: BLOODLINE_ANCHOR_ID,
         addedAt: serverTimestamp(),
         isPlaceholderEmail: true,
-        isBloodline: false,
-        linkedFamilyOf: STRANGER_ID,
-        linkedFamilyLabel: "Stranger's Family",
-        email: 'no-email.n-test-lf-should-fail@thenahars.placeholder',
+        isBloodline: true,
+        email: `no-email.${rejectedId.toLowerCase()}@thenahars.placeholder`,
       }),
     )
-    console.error('FAIL — expected Test 3 to be rejected by rules, but it succeeded')
+    console.error('FAIL — expected Test 2 to be rejected by rules, but it succeeded')
     ok = false
-    await adminDb.collection('people').doc('N-TEST-LF-SHOULD-FAIL').delete()
+    await adminDb.collection('people').doc(rejectedId).delete()
   } catch {
     console.log('PASS — rejected as expected')
   }
 
-  console.log('\nTest 4: confirm the linked root is unreachable from the main tree traversal...')
-  if (rootId) {
-    const rootSnap = await adminDb.collection('people').doc(rootId).get()
-    const data = rootSnap.data()!
-    const isolated =
-      (data.parents as unknown[]).length === 0 &&
-      (data.spouse as unknown[]).length === 0 &&
-      (data.children as unknown[]).length === 0 &&
-      data.linkedFamilyOf === ANCHOR_ID
-    if (isolated) {
-      console.log('PASS — linked root has no parents/spouse/children edges into the main tree')
-    } else {
-      console.error('FAIL — linked root has unexpected relationship-array entries:', data)
-      ok = false
-    }
+  console.log(
+    '\nTest 3: attempt to add a parent to the MARRIED-IN anchor claiming isBloodline == false (should also FAIL — newParentIsValid requires isBloodline == true regardless)...',
+  )
+  try {
+    const counterSnap = await adminDb.collection('meta').doc('id_counter').get()
+    const nextSeq = counterSnap.data()!.nextSeq as number
+    const rejectedId = `N-${String(nextSeq).padStart(4, '0')}`
+    await setDoc(
+      doc(db, 'people', rejectedId),
+      await personDoc(rejectedId, {
+        name: 'Should Not Exist Either',
+        generation: 1,
+        children: [MARRIED_IN_ANCHOR_ID],
+        addedBy: BLOODLINE_ANCHOR_ID,
+        addedAt: serverTimestamp(),
+        isPlaceholderEmail: true,
+        isBloodline: false,
+        email: `no-email.${rejectedId.toLowerCase()}@thenahars.placeholder`,
+      }),
+    )
+    console.error('FAIL — expected Test 3 to be rejected by rules, but it succeeded')
+    ok = false
+    await adminDb.collection('people').doc(rejectedId).delete()
+  } catch {
+    console.log('PASS — rejected as expected')
   }
 
   console.log('\nCleaning up test fixtures...')
   await signOut(clientAuth)
-  await adminDb.collection('people').doc(ANCHOR_ID).delete()
-  await adminDb.collection('people').doc(STRANGER_ID).delete()
+  await adminDb.collection('people').doc(BLOODLINE_ANCHOR_ID).delete()
+  await adminDb.collection('people').doc(MARRIED_IN_ANCHOR_ID).delete()
   await adminDb.collection('people_by_email').doc(TEST_EMAIL).delete()
-  if (rootId) {
-    await adminDb.collection('people').doc(rootId).delete()
+  if (bloodlineParentId) {
+    await adminDb.collection('people').doc(bloodlineParentId).delete()
     await adminDb
       .collection('people_by_email')
-      .doc(`no-email.${rootId.toLowerCase()}@thenahars.placeholder`)
+      .doc(`no-email.${bloodlineParentId.toLowerCase()}@thenahars.placeholder`)
       .delete()
       .catch(() => {})
     const counterRef = adminDb.collection('meta').doc('id_counter')

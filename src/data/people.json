@@ -24,7 +24,8 @@
     "status": "late",
     "claimed": false,
     "role": "member",
-    "notes": "Root of the tracked Nahar family tree."
+    "notes": "Root of the tracked Nahar family tree.",
+    "isBloodline": true
   },
   {
     "nahar_id": "N-0002",
@@ -50,7 +51,8 @@
     "linkedin": null,
     "status": "late",
     "claimed": false,
-    "role": "member"
+    "role": "member",
+    "isBloodline": false
   },
   {
     "nahar_id": "N-0003",
@@ -77,7 +79,8 @@
     "status": "living",
     "claimed": false,
     "role": "member",
-    "notes": "Placeholder — son 1 of 4. Details to be added."
+    "notes": "Placeholder — son 1 of 4. Details to be added.",
+    "isBloodline": true
   },
   {
     "nahar_id": "N-0004",
@@ -103,7 +106,8 @@
     "linkedin": null,
     "status": "living",
     "claimed": false,
-    "role": "member"
+    "role": "member",
+    "isBloodline": true
   },
   {
     "nahar_id": "N-0005",
@@ -130,7 +134,8 @@
     "status": "living",
     "claimed": false,
     "role": "member",
-    "notes": "Placeholder — son 3 of 4. Details to be added."
+    "notes": "Placeholder — son 3 of 4. Details to be added.",
+    "isBloodline": true
   },
   {
     "nahar_id": "N-0006",
@@ -157,7 +162,8 @@
     "status": "living",
     "claimed": false,
     "role": "member",
-    "notes": "Placeholder — son 4 of 4. Details to be added."
+    "notes": "Placeholder — son 4 of 4. Details to be added.",
+    "isBloodline": true
   },
   {
     "nahar_id": "N-0007",
@@ -184,7 +190,8 @@
     "status": "living",
     "claimed": false,
     "role": "member",
-    "notes": "Placeholder — daughter 1 of 2. Details to be added."
+    "notes": "Placeholder — daughter 1 of 2. Details to be added.",
+    "isBloodline": true
   },
   {
     "nahar_id": "N-0008",
@@ -211,7 +218,8 @@
     "status": "living",
     "claimed": false,
     "role": "member",
-    "notes": "Placeholder — daughter 2 of 2. Details to be added."
+    "notes": "Placeholder — daughter 2 of 2. Details to be added.",
+    "isBloodline": true
   },
   {
     "nahar_id": "N-0009",
@@ -238,7 +246,8 @@
     "status": "living",
     "claimed": false,
     "role": "member",
-    "notes": "Married into the Nahar family; birth family not part of this tree."
+    "notes": "Married into the Nahar family; birth family not part of this tree.",
+    "isBloodline": false
   },
   {
     "nahar_id": "N-0010",
@@ -264,7 +273,8 @@
     "linkedin": null,
     "status": "living",
     "claimed": false,
-    "role": "member"
+    "role": "member",
+    "isBloodline": true
   },
   {
     "nahar_id": "N-0011",
@@ -290,6 +300,7 @@
     "linkedin": null,
     "status": "living",
     "claimed": false,
-    "role": "member"
+    "role": "member",
+    "isBloodline": true
   }
 ]

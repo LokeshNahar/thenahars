@@ -73,6 +73,7 @@ async function personDoc(id: string, overrides: Record<string, unknown>) {
     addedBy: null,
     addedAt: null,
     isPlaceholderEmail: false,
+    isBloodline: true,
     linkedFamilyOf: null,
     linkedFamilyLabel: null,
     phone: null,
@@ -100,7 +101,14 @@ async function main() {
   await adminDb
     .collection('people')
     .doc(PARENT_ID)
-    .set(await personDoc(PARENT_ID, { name: 'Test Parent', email: TEST_EMAIL, claimed: true }))
+    .set(
+      await personDoc(PARENT_ID, {
+        name: 'Test Parent',
+        email: TEST_EMAIL,
+        claimed: true,
+        isBloodline: true,
+      }),
+    )
   await adminDb
     .collection('people')
     .doc(STRANGER_ID)

@@ -24,28 +24,39 @@ function byId(people: Person[]): Map<string, Person> {
  * units. `expandedIds` controls which units are allowed to reveal their own
  * children — this is what makes tree rendering lazy: only currently
  * expanded branches get laid out.
+ *
+ * `readOnlyIds` marks person ids that must render as a bare leaf even
+ * though the underlying data gives them a spouse/children — used by the
+ * linked-family takeover view for the anchor who connects the branch to
+ * the main tree (e.g. Vanita shown among her siblings): their own
+ * spouse/children belong to the MAIN tree, and pulling those in here would
+ * defeat the whole point of the branch staying folded away until opened.
  */
 export function buildFamilyUnit(
   personId: string,
   people: Person[],
   expandedIds: Set<string>,
   visited: Set<string> = new Set(),
+  readOnlyIds: Set<string> = new Set(),
 ): FamilyUnit | null {
   const index = byId(people)
   const primary = index.get(personId)
   if (!primary || visited.has(personId)) return null
 
   visited.add(personId)
-  const spouses = primary.spouse.map((id) => index.get(id)).filter((p): p is Person => !!p)
+  const isReadOnly = readOnlyIds.has(personId)
+  const spouses = isReadOnly ? [] : primary.spouse.map((id) => index.get(id)).filter((p): p is Person => !!p)
   for (const s of spouses) visited.add(s.nahar_id)
 
-  const children = primary.children.map((id) => index.get(id)).filter((p): p is Person => !!p)
+  const children = isReadOnly
+    ? []
+    : primary.children.map((id) => index.get(id)).filter((p): p is Person => !!p)
 
   const childUnits: FamilyUnit[] = []
-  if (expandedIds.has(personId)) {
+  if (!isReadOnly && expandedIds.has(personId)) {
     for (const child of children) {
       if (visited.has(child.nahar_id)) continue
-      const unit = buildFamilyUnit(child.nahar_id, people, expandedIds, visited)
+      const unit = buildFamilyUnit(child.nahar_id, people, expandedIds, visited, readOnlyIds)
       if (unit) childUnits.push(unit)
     }
   }

@@ -21,6 +21,13 @@ interface TreeNodeProps {
   /** nahar_id -> linkedFamilyLabel, for anyone in this unit who has a linked branch. */
   linkedFamilyByPersonId?: Map<string, string>
   onOpenLinkedFamily?: (personId: string) => void
+  /**
+   * nahar_id of the one person in this canvas who connects a linked-family
+   * branch to the main tree — only set inside the takeover view itself, to
+   * mark that person's card as "also in the main tree" since it renders
+   * without an expand affordance here (see FamilyTreeCanvas's readOnlyIds).
+   */
+  mainTreeAnchorId?: string
 }
 
 interface AnchorRect {
@@ -34,11 +41,13 @@ function MiniCard({
   focused = false,
   linkedFamilyLabel,
   onOpenLinkedFamily,
+  inMainTree = false,
 }: {
   person: Person
   focused?: boolean
   linkedFamilyLabel?: string
   onOpenLinkedFamily?: () => void
+  inMainTree?: boolean
 }) {
   const placeholder = isPlaceholder(person)
   const [hovering, setHovering] = useState(false)
@@ -66,6 +75,14 @@ function MiniCard({
       {focused && (
         <span className="rounded-full bg-[var(--color-accent)] px-2 py-0.5 text-[9px] font-bold tracking-wide text-[var(--color-accent-foreground)] uppercase">
           You
+        </span>
+      )}
+      {inMainTree && (
+        <span
+          title="Also in the main Nahar tree — tap to view their full profile there."
+          className="rounded-full bg-[var(--color-muted)] px-2 py-0.5 text-[9px] font-bold tracking-wide text-[var(--color-muted-foreground)] uppercase"
+        >
+          In Main Tree
         </span>
       )}
       <PersonAvatar person={person} size="sm" />
@@ -109,6 +126,7 @@ function TreeNodeBase({
   focused = false,
   linkedFamilyByPersonId,
   onOpenLinkedFamily,
+  mainTreeAnchorId,
 }: TreeNodeProps) {
   const isCouple = spouses.length > 0
 
@@ -128,6 +146,7 @@ function TreeNodeBase({
           focused={focused}
           linkedFamilyLabel={linkedFamilyByPersonId?.get(primary.nahar_id)}
           onOpenLinkedFamily={onOpenLinkedFamily ? () => onOpenLinkedFamily(primary.nahar_id) : undefined}
+          inMainTree={primary.nahar_id === mainTreeAnchorId}
         />
         {spouses.map((s) => (
           <div key={s.nahar_id} className="flex items-center gap-2">

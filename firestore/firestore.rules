@@ -31,7 +31,14 @@
 //     any other relationship-array change, stays admin-only.
 //   - role == "admin" may write anything on any record, including the
 //     relationship arrays (parents/spouse/children), nahar_id, claimed,
-//     role, and can create/delete freely.
+//     role, isBloodline, and can create/delete freely.
+//   - isBloodline marks whether a person was born a Nahar (their own
+//     parents-if-added extend the MAIN tree) vs. married in from outside
+//     (their own parents-if-added must form a linked EXTERNAL branch
+//     instead). A non-admin's "add parent" create is only valid when the
+//     anchor is bloodline; a married-in anchor's "add parent" must go
+//     through the linked-family-root path. Never a personal field — only
+//     admins can change it after creation.
 
 rules_version = '2';
 
@@ -96,45 +103,73 @@ service cloud.firestore {
         && data.role == 'member'
         && data.claimed == false
         && data.addedBy == me.nahar_id
-        && data.addedAt == request.time;
+        && data.addedAt == request.time
+        && data.isBloodline is bool;
     }
 
     // Case: caller adds THEIR OWN parent (or a relative-they-can-edit's
     // parent — e.g. their spouse's parent). New person's `children` must
-    // contain the anchor's id; no spouse/other children claimed yet.
+    // contain the anchor's id; no spouse/other children claimed yet. Only
+    // valid when the anchor is themself Nahar bloodline — a married-in
+    // person's own parents must go through newLinkedFamilyRootIsValid
+    // instead, so they land in a separate branch rather than polluting the
+    // main tree. The new parent inherits isBloodline == true (they extend
+    // the same blood line upward).
     function newParentIsValid(data) {
       return data.children.size() == 1
         && callerIsRelatedToAnchor(data.children[0])
+        && get(/databases/$(database)/documents/people/$(data.children[0])).data.isBloodline == true
         && data.parents.size() == 0
         && data.spouse.size() == 0
-        && data.linkedFamilyOf == null;
+        && data.linkedFamilyOf == null
+        && data.isBloodline == true;
     }
 
-    // Case: caller adds a spouse to themself or any editable relative.
+    // Case: caller adds a spouse to themself or any editable relative. A
+    // spouse married in from outside is never bloodline, regardless of the
+    // anchor's own status — this is deliberately NOT auto-derived, so the
+    // client must pass isBloodline == false explicitly here.
     function newSpouseIsValid(data) {
       return data.spouse.size() == 1
         && callerIsRelatedToAnchor(data.spouse[0])
         && data.parents.size() == 0
         && data.children.size() == 0
-        && data.linkedFamilyOf == null;
+        && data.linkedFamilyOf == null
+        && data.isBloodline == false;
     }
 
     // Case: caller adds a child (or grandchild, by acting from that
     // child's own page) of themself or any editable relative. Up to two
     // parents may be listed (co-parent convenience), but at least one
-    // must be an anchor the caller can edit.
+    // must be an anchor the caller can edit. A child of a bloodline parent
+    // is bloodline; a child added under a linked-external-family branch
+    // (neither parent bloodline, or the anchor is itself non-bloodline)
+    // stays non-bloodline — isBloodline always means "born a Nahar," never
+    // "primary line within whichever branch we're currently viewing."
     function newChildIsValid(data) {
       return data.parents.size() >= 1 && data.parents.size() <= 2
         && (callerIsRelatedToAnchor(data.parents[0])
             || (data.parents.size() == 2 && callerIsRelatedToAnchor(data.parents[1])))
         && data.spouse.size() == 0
         && data.children.size() == 0
-        && data.linkedFamilyOf == null;
+        && data.linkedFamilyOf == null
+        && data.isBloodline == anyParentIsBloodline(data.parents);
+    }
+
+    function anyParentIsBloodline(parentIds) {
+      return parentIds.size() > 0 && (
+        (exists(/databases/$(database)/documents/people/$(parentIds[0]))
+          && get(/databases/$(database)/documents/people/$(parentIds[0])).data.isBloodline == true)
+        || (parentIds.size() == 2
+            && exists(/databases/$(database)/documents/people/$(parentIds[1]))
+            && get(/databases/$(database)/documents/people/$(parentIds[1])).data.isBloodline == true)
+      );
     }
 
     // Case: caller creates the root of a linked EXTERNAL family (e.g. their
     // own mother's birth family), anchored on a person they can already
-    // edit. No relationship arrays — that's the whole point.
+    // edit. No relationship arrays — that's the whole point. Never
+    // bloodline — it exists precisely because the anchor married in.
     function newLinkedFamilyRootIsValid(data) {
       return data.parents.size() == 0
         && data.spouse.size() == 0
@@ -142,7 +177,8 @@ service cloud.firestore {
         && data.linkedFamilyOf != null
         && callerIsRelatedToAnchor(data.linkedFamilyOf)
         && data.linkedFamilyLabel is string
-        && data.linkedFamilyLabel.size() > 0;
+        && data.linkedFamilyLabel.size() > 0
+        && data.isBloodline == false;
     }
 
     // True if the caller can already edit the given anchor person — i.e.

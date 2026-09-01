@@ -21,6 +21,14 @@ export interface Person {
   /** True only when `email` is a system-generated placeholder, not a real address. */
   isPlaceholderEmail: boolean
   /**
+   * True if this person was born into the Nahar bloodline (so their own
+   * parents, if ever added, extend the MAIN tree upward) — false if they
+   * married in from outside (their own parents, if added, form a linked
+   * external-family branch instead). Every child of a bloodline person is
+   * also bloodline, regardless of gender; only a married-in spouse is false.
+   */
+  isBloodline: boolean
+  /**
    * Set only on the root of a linked EXTERNAL family (e.g. a mother's own
    * birth family) — the nahar_id of the existing main-tree person this
    * branch connects through. Never a parents/spouse/children edge, so the

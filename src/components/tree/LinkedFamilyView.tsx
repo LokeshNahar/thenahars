@@ -26,7 +26,7 @@ export function LinkedFamilyView({ root, anchor, people, onClose }: LinkedFamily
 
   function handleBack() {
     onClose()
-    navigate(`/person/${anchor.nahar_id}`)
+    navigate(`/tree?focus=${anchor.nahar_id}`)
   }
 
   return createPortal(

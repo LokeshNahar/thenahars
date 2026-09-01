@@ -10,7 +10,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter basename="/thenahars">
+        <BrowserRouter>
           <App />
         </BrowserRouter>
       </AuthProvider>

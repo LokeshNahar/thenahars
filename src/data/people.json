@@ -26,7 +26,8 @@
     "role": "member",
     "notes": "Root of the tracked Nahar family tree.",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0002",
@@ -54,7 +55,8 @@
     "claimed": false,
     "role": "member",
     "isBloodline": false,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0003",
@@ -83,7 +85,8 @@
     "role": "member",
     "notes": "Placeholder — son 1 of 4. Details to be added.",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0004",
@@ -111,7 +114,8 @@
     "claimed": false,
     "role": "member",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0005",
@@ -140,7 +144,8 @@
     "role": "member",
     "notes": "Placeholder — son 3 of 4. Details to be added.",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0006",
@@ -169,7 +174,8 @@
     "role": "member",
     "notes": "Placeholder — son 4 of 4. Details to be added.",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0007",
@@ -198,7 +204,8 @@
     "role": "member",
     "notes": "Placeholder — daughter 1 of 2. Details to be added.",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0008",
@@ -227,7 +234,8 @@
     "role": "member",
     "notes": "Placeholder — daughter 2 of 2. Details to be added.",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0009",
@@ -256,7 +264,8 @@
     "role": "member",
     "notes": "Married into the Nahar family; birth family not part of this tree.",
     "isBloodline": false,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0010",
@@ -284,7 +293,8 @@
     "claimed": false,
     "role": "member",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   },
   {
     "nahar_id": "N-0011",
@@ -312,6 +322,7 @@
     "claimed": false,
     "role": "member",
     "isBloodline": true,
-    "dateOfBirth": null
+    "dateOfBirth": null,
+    "marriageDate": null
   }
 ]

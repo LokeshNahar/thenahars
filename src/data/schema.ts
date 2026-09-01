@@ -41,6 +41,17 @@ export interface Person {
   phone: string | null
   /** ISO yyyy-mm-dd, so it sorts/compares naturally. Rendered as dd-mm-yyyy. */
   dateOfBirth: string | null
+  /**
+   * ISO yyyy-mm-dd wedding date, so it sorts/compares naturally. Rendered
+   * as dd-mm-yyyy. A fact about the COUPLE, not just this person — kept in
+   * sync on both spouses' records by the same edit (see PersonEditForm),
+   * since spouse[] is a symmetric array rather than a shared marriage
+   * record. Only meaningful when `spouse` is non-empty; editing it when a
+   * person has more than one spouse recorded is a not-yet-modeled edge
+   * case (assumes exactly one marriage per person, like the rest of this
+   * schema does today).
+   */
+  marriageDate: string | null
   email: string | null
   profession: string | null
   /** Highest education/qualification — a QUALIFICATIONS value or free text. */

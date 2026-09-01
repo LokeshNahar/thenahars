@@ -148,6 +148,7 @@ export function AddPersonForm({ anchor, anchorSpouses, relation, onCancel, onSav
           linkedFamilyLabel: null,
           phone: null,
           dateOfBirth: null,
+          marriageDate: null,
           email: resolvedEmail,
           profession: null,
           qualification: null,

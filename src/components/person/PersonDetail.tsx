@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Briefcase, Cake, GraduationCap, Mail, MapPin, Pencil, Phone, UserPlus } from 'lucide-react'
+import { Briefcase, Cake, GraduationCap, Heart, Mail, MapPin, Pencil, Phone, UserPlus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
-import { ageInYears, isoToDdmmyyyy } from '../../lib/dateOfBirth'
+import { ageInYears, isoToDdmmyyyy, yearsMarried } from '../../lib/dateOfBirth'
 import { maskName } from '../../lib/nameMask'
 import {
   canAddLinkedFamily,
@@ -163,6 +163,7 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
           <PersonEditForm
             key="edit"
             person={person}
+            spouses={spouses}
             onCancel={() => setEditing(false)}
             onSaved={handleSaved}
           />
@@ -215,6 +216,16 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
                     <dd>
                       {isoToDdmmyyyy(person.dateOfBirth)}
                       {person.status === 'living' && ` (age ${ageInYears(person)})`}
+                    </dd>
+                  </div>
+                )}
+                {person.marriageDate && spouses.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
+                    <Heart size={14} aria-hidden="true" />
+                    <dt className="sr-only">Anniversary</dt>
+                    <dd>
+                      {isoToDdmmyyyy(person.marriageDate)}
+                      {person.status === 'living' && ` (${yearsMarried(person)} years)`}
                     </dd>
                   </div>
                 )}

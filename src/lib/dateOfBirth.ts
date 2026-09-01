@@ -28,8 +28,29 @@ function isRealDate(year: number, month: number, day: number): boolean {
 
 /** True if `person.dateOfBirth` falls on today's month+day, regardless of birth year. */
 export function isBirthdayToday(person: Person, today: Date = new Date()): boolean {
-  if (!person.dateOfBirth) return false
-  const match = ISO_PATTERN.exec(person.dateOfBirth)
+  return isDateToday(person.dateOfBirth, today)
+}
+
+/** Age in whole years as of `today`, or null if no birth date is recorded. */
+export function ageInYears(person: Person, today: Date = new Date()): number | null {
+  if (!person.dateOfBirth) return null
+  return yearsSince(person.dateOfBirth, today)
+}
+
+/** True if `person.marriageDate` falls on today's month+day, regardless of year. */
+export function isAnniversaryToday(person: Person, today: Date = new Date()): boolean {
+  return isDateToday(person.marriageDate, today)
+}
+
+/** Years of marriage as of `today`, or null if no marriage date is recorded. */
+export function yearsMarried(person: Person, today: Date = new Date()): number | null {
+  if (!person.marriageDate) return null
+  return yearsSince(person.marriageDate, today)
+}
+
+function isDateToday(value: string | null, today: Date): boolean {
+  if (!value) return false
+  const match = ISO_PATTERN.exec(value)
   if (!match) return false
   const [, , mm, dd] = match
   const todayMm = String(today.getMonth() + 1).padStart(2, '0')
@@ -37,17 +58,15 @@ export function isBirthdayToday(person: Person, today: Date = new Date()): boole
   return mm === todayMm && dd === todayDd
 }
 
-/** Age in whole years as of `today`, or null if no birth date is recorded. */
-export function ageInYears(person: Person, today: Date = new Date()): number | null {
-  if (!person.dateOfBirth) return null
-  const match = ISO_PATTERN.exec(person.dateOfBirth)
+function yearsSince(isoDate: string, today: Date): number | null {
+  const match = ISO_PATTERN.exec(isoDate)
   if (!match) return null
   const [, yyyy, mm, dd] = match
-  const birth = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
-  let age = today.getFullYear() - birth.getFullYear()
-  const hasHadBirthdayThisYear =
-    today.getMonth() > birth.getMonth() ||
-    (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate())
-  if (!hasHadBirthdayThisYear) age -= 1
-  return age
+  const start = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
+  let years = today.getFullYear() - start.getFullYear()
+  const hasOccurredThisYear =
+    today.getMonth() > start.getMonth() ||
+    (today.getMonth() === start.getMonth() && today.getDate() >= start.getDate())
+  if (!hasOccurredThisYear) years -= 1
+  return years
 }

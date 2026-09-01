@@ -2,10 +2,12 @@ import { Calendar } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 import { ddmmyyyyToIso, isoToDdmmyyyy } from '../../lib/dateOfBirth'
 
-interface DateOfBirthFieldProps {
+interface DatePickerFieldProps {
   /** Stored ISO yyyy-mm-dd, or empty string if unset. */
   value: string
   onChange: (isoValue: string) => void
+  /** Used to build the fields' aria-labels, e.g. "Date of birth" or "Anniversary". */
+  label?: string
   className?: string
 }
 
@@ -15,9 +17,10 @@ interface DateOfBirthFieldProps {
  * the "pick from a calendar OR type dd-mm-yyyy" requirement. The native
  * date input's own typed entry is locale-dependent (often mm/dd/yyyy in en-US),
  * so the text field is what actually guarantees dd-mm-yyyy typing works
- * regardless of the visitor's browser locale.
+ * regardless of the visitor's browser locale. Generic — used for both
+ * date of birth and marriage-anniversary date fields.
  */
-export function DateOfBirthField({ value, onChange, className }: DateOfBirthFieldProps) {
+export function DatePickerField({ value, onChange, label = 'Date', className }: DatePickerFieldProps) {
   const textId = useId()
   const dateId = useId()
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -75,7 +78,7 @@ export function DateOfBirthField({ value, onChange, className }: DateOfBirthFiel
           value={textValue}
           onChange={(e) => handleTextChange(e.target.value)}
           placeholder="dd-mm-yyyy"
-          aria-label="Date of birth (dd-mm-yyyy)"
+          aria-label={`${label} (dd-mm-yyyy)`}
           aria-invalid={textError || undefined}
           className={`w-full rounded-xl border bg-[var(--color-background)] px-3.5 py-2.5 text-sm text-[var(--color-foreground)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ring)] ${
             textError ? 'border-[var(--color-destructive)]' : 'border-[var(--glass-border)]'
@@ -101,7 +104,7 @@ export function DateOfBirthField({ value, onChange, className }: DateOfBirthFiel
           value={value}
           onChange={(e) => handleDateChange(e.target.value)}
           onClick={openCalendar}
-          aria-label="Pick date of birth from calendar"
+          aria-label={`Pick ${label.toLowerCase()} from calendar`}
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         />
       </div>

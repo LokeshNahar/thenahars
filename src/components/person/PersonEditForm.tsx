@@ -5,11 +5,13 @@ import { useState } from 'react'
 import type { LifeStatus, Person } from '../../data/schema'
 import { db } from '../../lib/firebase'
 import { OCCUPATIONS, QUALIFICATIONS } from '../../lib/qualifications'
-import { DateOfBirthField } from '../ui/DateOfBirthField'
+import { DatePickerField } from '../ui/DatePickerField'
 import { SelectWithOther } from '../ui/SelectWithOther'
 
 interface PersonEditFormProps {
   person: Person
+  /** This person's recorded spouse(s), if any — marriageDate is only editable when at least one is present. */
+  spouses: Person[]
   onCancel: () => void
   onSaved: () => void
 }
@@ -18,6 +20,7 @@ interface FormState {
   name: string
   phone: string
   dateOfBirth: string
+  marriageDate: string
   email: string
   profession: string
   qualification: string
@@ -35,6 +38,7 @@ function toFormState(person: Person): FormState {
     name: person.name,
     phone: person.phone ?? '',
     dateOfBirth: person.dateOfBirth ?? '',
+    marriageDate: person.marriageDate ?? '',
     email: person.email ?? '',
     profession: person.profession ?? '',
     qualification: person.qualification ?? '',
@@ -62,7 +66,7 @@ const inputClass =
 const labelClass =
   'mb-1.5 block text-xs font-semibold tracking-wide text-[var(--color-muted-foreground)] uppercase'
 
-export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProps) {
+export function PersonEditForm({ person, spouses, onCancel, onSaved }: PersonEditFormProps) {
   const [form, setForm] = useState<FormState>(() => toFormState(person))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -94,10 +98,13 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
       const batch = writeBatch(db)
       const personRef = doc(db, 'people', person.nahar_id)
 
+      const marriageDate = spouses.length > 0 ? form.marriageDate || null : person.marriageDate
+
       batch.update(personRef, {
         name: form.name.trim(),
         phone: form.phone.trim() || null,
         dateOfBirth: form.dateOfBirth || null,
+        marriageDate,
         email: trimmedEmail ? trimmedEmail.toLowerCase() : null,
         profession: form.profession.trim() || null,
         qualification: form.qualification.trim() || null,
@@ -109,6 +116,15 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
         status: form.status,
         notes: form.notes.trim() || null,
       })
+
+      // A marriage date is a fact about the COUPLE, not just this person —
+      // keep it in sync on every recorded spouse's own record too, since
+      // spouse[] is a symmetric array rather than a shared marriage doc.
+      if (spouses.length > 0 && marriageDate !== (spouses[0].marriageDate ?? null)) {
+        for (const spouse of spouses) {
+          batch.update(doc(db, 'people', spouse.nahar_id), { marriageDate })
+        }
+      }
 
       const previousEmail = person.email?.toLowerCase()
       const newEmail = trimmedEmail ? trimmedEmail.toLowerCase() : null
@@ -176,8 +192,23 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
 
         <div>
           <span className={labelClass}>Date of Birth</span>
-          <DateOfBirthField value={form.dateOfBirth} onChange={(v) => update('dateOfBirth', v)} />
+          <DatePickerField
+            value={form.dateOfBirth}
+            onChange={(v) => update('dateOfBirth', v)}
+            label="Date of birth"
+          />
         </div>
+
+        {spouses.length > 0 && (
+          <div>
+            <span className={labelClass}>Anniversary</span>
+            <DatePickerField
+              value={form.marriageDate}
+              onChange={(v) => update('marriageDate', v)}
+              label="Anniversary"
+            />
+          </div>
+        )}
 
         <div>
           <label className={labelClass} htmlFor="email">

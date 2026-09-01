@@ -110,6 +110,7 @@ export function LinkFamilyRootForm({ anchor, onCancel, onSaved }: LinkFamilyRoot
           linkedFamilyLabel: trimmedLabel,
           phone: null,
           dateOfBirth: null,
+          marriageDate: null,
           email: resolvedEmail,
           profession: null,
           qualification: null,

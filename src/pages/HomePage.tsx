@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Hero } from '../components/home/Hero'
+import { TodaysBirthdays } from '../components/home/TodaysBirthdays'
 import { TreePreview } from '../components/home/TreePreview'
 import { usePeople } from '../hooks/usePeople'
 
@@ -18,6 +19,7 @@ export function HomePage() {
         </LionHeroSection>
       </Suspense>
       <TreePreview people={people} />
+      <TodaysBirthdays people={people} />
     </div>
   )
 }

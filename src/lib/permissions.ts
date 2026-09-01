@@ -5,6 +5,7 @@ import type { Person } from '../data/schema'
 export const EDITABLE_PERSONAL_FIELDS = [
   'name',
   'phone',
+  'dateOfBirth',
   'email',
   'profession',
   'qualification',

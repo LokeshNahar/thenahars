@@ -109,6 +109,7 @@ export function LinkFamilyRootForm({ anchor, onCancel, onSaved }: LinkFamilyRoot
           linkedFamilyOf: anchor.nahar_id,
           linkedFamilyLabel: trimmedLabel,
           phone: null,
+          dateOfBirth: null,
           email: resolvedEmail,
           profession: null,
           qualification: null,

@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Briefcase, GraduationCap, Mail, MapPin, Pencil, Phone, UserPlus } from 'lucide-react'
+import { Briefcase, Cake, GraduationCap, Mail, MapPin, Pencil, Phone, UserPlus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
+import { ageInYears, isoToDdmmyyyy } from '../../lib/dateOfBirth'
 import {
   canAddLinkedFamily,
   canAddRelationship,
@@ -194,6 +195,16 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
               {isLinkedMember ? (
                 <>
                   <dl className="mt-2 flex flex-col gap-1.5">
+                    {person.dateOfBirth && (
+                      <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
+                        <Cake size={14} aria-hidden="true" />
+                        <dt className="sr-only">Date of Birth</dt>
+                        <dd>
+                          {isoToDdmmyyyy(person.dateOfBirth)}
+                          {person.status === 'living' && ` (age ${ageInYears(person)})`}
+                        </dd>
+                      </div>
+                    )}
                     {PRIVATE_FIELD_ROWS.map(({ key, icon: Icon, label }) => {
                       const value = person[key]
                       if (!value || typeof value !== 'string') return null

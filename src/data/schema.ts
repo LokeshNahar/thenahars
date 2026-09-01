@@ -39,6 +39,8 @@ export interface Person {
   /** Short label for a linked-family root's toggle/breadcrumb, e.g. "Mother's Family". */
   linkedFamilyLabel: string | null
   phone: string | null
+  /** ISO yyyy-mm-dd, so it sorts/compares naturally. Rendered as dd-mm-yyyy. */
+  dateOfBirth: string | null
   email: string | null
   profession: string | null
   /** Highest education/qualification — a QUALIFICATIONS value or free text. */

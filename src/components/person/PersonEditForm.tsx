@@ -5,6 +5,7 @@ import { useState } from 'react'
 import type { LifeStatus, Person } from '../../data/schema'
 import { db } from '../../lib/firebase'
 import { OCCUPATIONS, QUALIFICATIONS } from '../../lib/qualifications'
+import { DateOfBirthField } from '../ui/DateOfBirthField'
 import { SelectWithOther } from '../ui/SelectWithOther'
 
 interface PersonEditFormProps {
@@ -16,6 +17,7 @@ interface PersonEditFormProps {
 interface FormState {
   name: string
   phone: string
+  dateOfBirth: string
   email: string
   profession: string
   qualification: string
@@ -32,6 +34,7 @@ function toFormState(person: Person): FormState {
   return {
     name: person.name,
     phone: person.phone ?? '',
+    dateOfBirth: person.dateOfBirth ?? '',
     email: person.email ?? '',
     profession: person.profession ?? '',
     qualification: person.qualification ?? '',
@@ -94,6 +97,7 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
       batch.update(personRef, {
         name: form.name.trim(),
         phone: form.phone.trim() || null,
+        dateOfBirth: form.dateOfBirth || null,
         email: trimmedEmail ? trimmedEmail.toLowerCase() : null,
         profession: form.profession.trim() || null,
         qualification: form.qualification.trim() || null,
@@ -168,6 +172,11 @@ export function PersonEditForm({ person, onCancel, onSaved }: PersonEditFormProp
             onChange={(e) => update('phone', e.target.value)}
             placeholder="Not set"
           />
+        </div>
+
+        <div>
+          <span className={labelClass}>Date of Birth</span>
+          <DateOfBirthField value={form.dateOfBirth} onChange={(v) => update('dateOfBirth', v)} />
         </div>
 
         <div>

@@ -89,7 +89,7 @@ service cloud.firestore {
 
     function onlyPersonalFieldsChanged() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'name', 'phone', 'email', 'profession', 'qualification', 'location', 'photo',
+        'name', 'phone', 'dateOfBirth', 'email', 'profession', 'qualification', 'location', 'photo',
         'instagram', 'facebook', 'linkedin', 'status', 'notes'
       ]);
     }

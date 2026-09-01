@@ -36,7 +36,7 @@ export function LionHeroSection({ children }: LionHeroSectionProps) {
     <div ref={trackRef} className={reducedMotion ? 'relative' : 'relative h-[160vh]'}>
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <LionScene scrollProgress={scrollProgress} />
-        <div className="relative z-10 flex h-full items-center justify-center">{children}</div>
+        <div className="relative z-10 flex h-full items-start justify-center pt-20 sm:pt-24">{children}</div>
       </div>
     </div>
   )

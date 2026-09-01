@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
 import { ageInYears, isoToDdmmyyyy, yearsMarried } from '../../lib/dateOfBirth'
+import { linkedFamilyToggleLabel } from '../../lib/linkedFamily'
 import { maskName } from '../../lib/nameMask'
 import {
   canAddLinkedFamily,
@@ -281,7 +282,7 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
               </p>
               {linkedFamilyRoot ? (
                 <LinkedFamilyToggle
-                  label={linkedFamilyRoot.linkedFamilyLabel ?? `${person.name.split(' ')[0]}'s Family`}
+                  label={linkedFamilyRoot.linkedFamilyLabel ?? linkedFamilyToggleLabel(person.name)}
                   onClick={() => setViewingLinkedFamily(true)}
                 />
               ) : (

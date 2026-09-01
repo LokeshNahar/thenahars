@@ -16,7 +16,7 @@ export function LionScene({ scrollProgress }: LionSceneProps) {
   return (
     <Canvas
       dpr={DPR}
-      camera={{ position: [0, 0.1, 7.5], fov: 40 }}
+      camera={{ position: [0, 0.1, 8.5], fov: 45 }}
       gl={{ antialias: true, alpha: true }}
       className="!absolute !inset-0"
     >

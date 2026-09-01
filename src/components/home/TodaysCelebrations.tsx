@@ -60,7 +60,7 @@ export function TodaysCelebrations({ people }: TodaysCelebrationsProps) {
         >
           <Cake size={26} className="text-[var(--color-muted-foreground)]" aria-hidden="true" />
           <h2 className="font-[var(--font-heading)] text-xl font-semibold text-[var(--color-card-foreground)] sm:text-2xl">
-            No Celebrations Today
+            No Birthdays or Anniversaries Today
           </h2>
           <p className="max-w-md text-sm text-[var(--color-muted-foreground)]">
             Check back another day to celebrate with the family.

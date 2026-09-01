@@ -10,12 +10,43 @@ interface TreePreviewProps {
   people: Person[]
 }
 
+interface PreviewCard {
+  person: Person
+  role: 'self' | 'parent' | 'child'
+}
+
+const MAX_CHILDREN_SHOWN = 4
+
+/** Centers the preview on the signed-in member: their parents above, them in the middle (glowing), a few of their children below. Falls back to a plain roster for signed-out visitors, since there's no "self" to center on. */
+function buildCards(people: Person[], selfId: string | null): PreviewCard[] {
+  if (!selfId) return []
+  const byId = new Map(people.map((p) => [p.nahar_id, p]))
+  const self = byId.get(selfId)
+  if (!self) return []
+
+  const parents = self.parents.map((id) => byId.get(id)).filter((p): p is Person => !!p && !isPlaceholder(p))
+  const children = self.children
+    .map((id) => byId.get(id))
+    .filter((p): p is Person => !!p && !isPlaceholder(p))
+    .slice(0, MAX_CHILDREN_SHOWN)
+
+  return [
+    ...parents.map((person): PreviewCard => ({ person, role: 'parent' })),
+    { person: self, role: 'self' },
+    ...children.map((person): PreviewCard => ({ person, role: 'child' })),
+  ]
+}
+
 export function TreePreview({ people }: TreePreviewProps) {
   const { user } = useAuth()
   const isLinkedMember = !!user?.naharId
-  const featured = people.filter((p) => !isPlaceholder(p)).slice(0, 6)
+  const cards = buildCards(people, user?.naharId ?? null)
+  const fallback = people.filter((p) => !isPlaceholder(p)).slice(0, 6)
+  const showingSelf = cards.length > 0
 
-  if (featured.length === 0) return null
+  const items: PreviewCard[] = showingSelf ? cards : fallback.map((person) => ({ person, role: 'child' }))
+
+  if (items.length === 0) return null
 
   return (
     <section className="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
@@ -31,11 +62,13 @@ export function TreePreview({ people }: TreePreviewProps) {
             A Growing Family
           </h2>
           <p className="max-w-md text-sm text-[var(--color-muted-foreground)]">
-            This is just the beginning — more branches of the Nahar tree are being added.
+            {showingSelf
+              ? 'Your place in the tree — parents, you, and your children.'
+              : 'This is just the beginning — more branches of the Nahar tree are being added.'}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-6">
-          {featured.map((person, i) => (
+          {items.map(({ person, role }, i) => (
             <motion.div
               key={person.nahar_id}
               initial={{ opacity: 0, scale: 0.85 }}
@@ -44,10 +77,27 @@ export function TreePreview({ people }: TreePreviewProps) {
               transition={{ duration: 0.35, delay: i * 0.06, ease: 'easeOut' }}
               className="flex flex-col items-center gap-2"
             >
-              <PersonAvatar person={person} size="md" masked={!isLinkedMember} />
-              <p className="text-xs font-medium text-[var(--color-card-foreground)]">
+              <div className={role === 'self' ? 'relative' : undefined}>
+                {role === 'self' && (
+                  <div
+                    aria-hidden="true"
+                    className="focus-ring-pulse absolute inset-0 -m-1 rounded-full"
+                    style={{ boxShadow: 'var(--shadow-glow)' }}
+                  />
+                )}
+                <PersonAvatar person={person} size={role === 'self' ? 'lg' : 'md'} masked={!isLinkedMember} />
+              </div>
+              <p
+                className={`text-xs font-medium text-[var(--color-card-foreground)] ${role === 'self' ? 'font-semibold' : ''}`}
+              >
                 {isLinkedMember ? person.name : maskName(person.name)}
+                {role === 'self' && ' (You)'}
               </p>
+              {role !== 'self' && (
+                <p className="text-[10px] tracking-wide text-[var(--color-muted-foreground)] uppercase">
+                  {role === 'parent' ? 'Parent' : 'Child'}
+                </p>
+              )}
             </motion.div>
           ))}
         </div>
@@ -56,7 +106,7 @@ export function TreePreview({ people }: TreePreviewProps) {
             to="/tree"
             className="flex items-center gap-1.5 text-sm font-semibold text-[var(--color-accent)] hover:underline"
           >
-            View the full tree
+            Explore the full tree
             <ArrowRight size={14} aria-hidden="true" />
           </Link>
         </div>

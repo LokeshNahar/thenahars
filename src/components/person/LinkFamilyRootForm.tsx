@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import type { Gender, Person } from '../../data/schema'
 import { db } from '../../lib/firebase'
+import { linkedFamilyHeaderTitle } from '../../lib/linkedFamily'
 import { MagneticButton } from '../ui/MagneticButton'
 
 interface LinkFamilyRootFormProps {
@@ -33,7 +34,7 @@ function initialsOf(name: string): string {
 }
 
 function defaultLabel(anchorName: string): string {
-  return `${anchorName.split(' ')[0]}'s Family`
+  return linkedFamilyHeaderTitle(anchorName)
 }
 
 export function LinkFamilyRootForm({ anchor, onCancel, onSaved }: LinkFamilyRootFormProps) {

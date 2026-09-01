@@ -28,7 +28,7 @@ export function Hero() {
   return (
     <section
       onPointerMove={onPointerMove}
-      className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-24 text-center sm:px-6 sm:py-32"
+      className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-12 text-center sm:px-6 sm:py-16"
     >
       <motion.div
         aria-hidden="true"

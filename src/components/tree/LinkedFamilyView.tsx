@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { Person } from '../../data/schema'
+import { linkedFamilyHeaderTitle } from '../../lib/linkedFamily'
 import { FamilyTreeCanvas } from './FamilyTreeCanvas'
 
 interface LinkedFamilyViewProps {
@@ -51,7 +52,7 @@ export function LinkedFamilyView({ root, anchor, people, onClose }: LinkedFamily
               Linked Branch
             </p>
             <h1 className="font-[var(--font-heading)] text-2xl font-bold text-[var(--color-foreground)]">
-              {root.linkedFamilyLabel ?? `${anchor.name.split(' ')[0]}'s Family`}
+              {root.linkedFamilyLabel ?? linkedFamilyHeaderTitle(anchor.name)}
             </h1>
             <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
               Connected through {anchor.name}

@@ -7,6 +7,7 @@ import {
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
 import type { Person } from '../../data/schema'
+import { linkedFamilyToggleLabel } from '../../lib/linkedFamily'
 import { buildFamilyUnit, findRootId, getAncestorChain } from '../../lib/treeBuilder'
 import { layoutTree } from '../../lib/treeLayout'
 import { LinkedFamilyView } from './LinkedFamilyView'
@@ -62,7 +63,7 @@ export function FamilyTreeCanvas({ people, focusId, rootIdOverride }: FamilyTree
     if (rootIdOverride) return map
     for (const p of people) {
       if (p.linkedFamilyOf) {
-        map.set(p.linkedFamilyOf, p.linkedFamilyLabel ?? `${p.name.split(' ')[0]}'s Family`)
+        map.set(p.linkedFamilyOf, p.linkedFamilyLabel ?? linkedFamilyToggleLabel(p.name))
       }
     }
     return map

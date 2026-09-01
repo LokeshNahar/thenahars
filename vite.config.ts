@@ -2,10 +2,9 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// Base path: '/thenahars/' while verifying on the default *.github.io/thenahars/ URL.
-// Switch to '/' + add public/CNAME when the custom domain (thenahars.in) goes live.
+// Base path: '/' since the custom domain (thenahars.in) is live via public/CNAME.
 export default defineConfig({
-  base: '/thenahars/',
+  base: '/',
   plugins: [react(), tailwindcss()],
   build: {
     rollupOptions: {

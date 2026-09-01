@@ -3,6 +3,6 @@
     "dev": "thenahars-dev",
     "uat": "thenahars-uat",
     "prod": "thenahars-prod",
-    "default": "thenahars-dev"
+    "default": "thenahars-uat"
   }
 }

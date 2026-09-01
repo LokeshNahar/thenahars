@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
-import { doc, writeBatch } from 'firebase/firestore'
-import { Loader2, Search, Shield, ShieldOff, Sparkles } from 'lucide-react'
+import { arrayRemove, doc, writeBatch } from 'firebase/firestore'
+import { AlertTriangle, Loader2, Search, Shield, ShieldOff, Sparkles, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -13,15 +13,56 @@ import { isAdmin } from '../lib/permissions'
 function AdminRow({
   person,
   addedByName,
+  allPeople,
   onSaved,
 }: {
   person: Person
   addedByName: string | null
+  allPeople: Person[]
   onSaved: () => void
 }) {
   const [email, setEmail] = useState(person.isPlaceholderEmail ? '' : (person.email ?? ''))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  const hasChildren = person.children.length > 0
+  const linkedFamilyChildCount = allPeople.filter((p) => p.linkedFamilyOf === person.nahar_id).length
+
+  async function handleDelete() {
+    if (!db) return
+    setError(null)
+    setSaving(true)
+    try {
+      const batch = writeBatch(db)
+
+      // Remove this person from any relative's relationship arrays — a
+      // deletion must never leave a dangling reference to an id that no
+      // longer resolves to a document.
+      for (const relativeId of [...person.parents, ...person.spouse]) {
+        const relative = allPeople.find((p) => p.nahar_id === relativeId)
+        if (!relative) continue
+        const update: Record<string, unknown> = {}
+        if (relative.spouse.includes(person.nahar_id)) update.spouse = arrayRemove(person.nahar_id)
+        if (relative.children.includes(person.nahar_id)) update.children = arrayRemove(person.nahar_id)
+        if (Object.keys(update).length > 0) {
+          batch.update(doc(db, 'people', relativeId), update)
+        }
+      }
+
+      if (person.email) {
+        batch.delete(doc(db, 'people_by_email', person.email.toLowerCase()))
+      }
+
+      batch.delete(doc(db, 'people', person.nahar_id))
+      await batch.commit()
+      onSaved()
+    } catch (err) {
+      console.error('Failed to delete person:', err)
+      setError('Delete failed.')
+      setSaving(false)
+    }
+  }
 
   async function handleLink() {
     if (!db) return
@@ -72,7 +113,7 @@ function AdminRow({
   }
 
   return (
-    <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--glass-border)] py-4 last:border-0 sm:grid-cols-[1fr_2fr_auto_auto]">
+    <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--glass-border)] py-4 last:border-0 sm:grid-cols-[1fr_2fr_auto_auto_auto]">
       <div>
         <div className="flex flex-wrap items-center gap-1.5">
           <p
@@ -138,7 +179,64 @@ function AdminRow({
         )}
       </button>
 
-      {error && <p className="text-xs text-[var(--color-destructive)] sm:col-span-4">{error}</p>}
+      <button
+        type="button"
+        onClick={() => setConfirmingDelete(true)}
+        disabled={saving || hasChildren || linkedFamilyChildCount > 0}
+        title={
+          hasChildren
+            ? 'Remove or reassign their children before deleting'
+            : linkedFamilyChildCount > 0
+              ? 'Their linked-family branch still has people in it'
+              : 'Remove this person from the family tree'
+        }
+        className="flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-[var(--color-destructive)]/30 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-[var(--color-destructive)] transition-colors hover:bg-[var(--color-destructive)]/10 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Trash2 size={13} aria-hidden="true" />
+        Delete
+      </button>
+
+      {confirmingDelete && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-[var(--color-destructive)]/30 bg-[var(--color-destructive)]/5 p-4 sm:col-span-5">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle
+              size={16}
+              className="mt-0.5 shrink-0 text-[var(--color-destructive)]"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-[var(--color-foreground)]">
+              Permanently delete <strong>{person.name}</strong> ({person.nahar_id})? This removes them from
+              any parent&rsquo;s/spouse&rsquo;s records too. This can&rsquo;t be undone.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={saving}
+              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--glass-border)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+            >
+              <X size={12} aria-hidden="true" />
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={saving}
+              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-[var(--color-destructive)] px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? (
+                <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Trash2 size={12} aria-hidden="true" />
+              )}
+              {saving ? 'Deleting…' : 'Yes, delete permanently'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="text-xs text-[var(--color-destructive)] sm:col-span-5">{error}</p>}
     </div>
   )
 }
@@ -192,7 +290,8 @@ export function AdminPage() {
           Admin
         </h1>
         <p className="mt-2 text-[var(--color-muted-foreground)]">
-          Link a family member&rsquo;s Google account by email, or promote/revoke admins.
+          Link a family member&rsquo;s Google account by email, promote/revoke admins, or remove a
+          mistakenly-added record.
         </p>
       </motion.div>
 
@@ -236,6 +335,7 @@ export function AdminPage() {
               key={person.nahar_id}
               person={person}
               addedByName={person.addedBy ? (nameById.get(person.addedBy) ?? person.addedBy) : null}
+              allPeople={people}
               onSaved={refetch}
             />
           ))

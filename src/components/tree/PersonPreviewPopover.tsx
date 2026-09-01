@@ -3,6 +3,7 @@ import { Briefcase, MapPin } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../context/AuthContext'
 import { isPlaceholder, type Person } from '../../data/schema'
+import { maskName } from '../../lib/nameMask'
 import { PersonAvatar } from '../person/PersonAvatar'
 import { StatusBadge } from '../person/StatusBadge'
 
@@ -43,10 +44,10 @@ export function PersonPreviewPopover({ person, visible, anchorRect }: PersonPrev
           }}
         >
           <div className="flex items-center gap-3">
-            <PersonAvatar person={person} size="sm" />
+            <PersonAvatar person={person} size="sm" masked={!isLinkedMember} />
             <div className="min-w-0">
               <p className="truncate font-[var(--font-heading)] text-sm font-semibold text-[var(--color-foreground)]">
-                {person.name}
+                {isLinkedMember ? person.name : maskName(person.name)}
               </p>
               <StatusBadge status={person.status} />
             </div>

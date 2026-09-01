@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import { isPlaceholder, type Person } from '../../data/schema'
+import { maskName } from '../../lib/nameMask'
 import { PersonAvatar } from '../person/PersonAvatar'
 
 interface TreePreviewProps {
@@ -9,6 +11,8 @@ interface TreePreviewProps {
 }
 
 export function TreePreview({ people }: TreePreviewProps) {
+  const { user } = useAuth()
+  const isLinkedMember = !!user?.naharId
   const featured = people.filter((p) => !isPlaceholder(p)).slice(0, 6)
 
   if (featured.length === 0) return null
@@ -40,8 +44,10 @@ export function TreePreview({ people }: TreePreviewProps) {
               transition={{ duration: 0.35, delay: i * 0.06, ease: 'easeOut' }}
               className="flex flex-col items-center gap-2"
             >
-              <PersonAvatar person={person} size="md" />
-              <p className="text-xs font-medium text-[var(--color-card-foreground)]">{person.name}</p>
+              <PersonAvatar person={person} size="md" masked={!isLinkedMember} />
+              <p className="text-xs font-medium text-[var(--color-card-foreground)]">
+                {isLinkedMember ? person.name : maskName(person.name)}
+              </p>
             </motion.div>
           ))}
         </div>

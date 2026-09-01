@@ -1,16 +1,34 @@
-import { Search, X } from 'lucide-react'
+import { Lock, Search, X } from 'lucide-react'
 
 interface SearchBarProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
+  /** Renders a locked, sign-in-prompting state instead of an active search input. */
+  disabled?: boolean
+  onDisabledClick?: () => void
 }
 
 export function SearchBar({
   value,
   onChange,
   placeholder = 'Search by name, profession, or location…',
+  disabled = false,
+  onDisabledClick,
 }: SearchBarProps) {
+  if (disabled) {
+    return (
+      <button
+        type="button"
+        onClick={onDisabledClick}
+        className="glass flex h-14 w-full cursor-pointer items-center gap-3 rounded-full px-5 text-left text-sm text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--glass-bg-strong)]"
+      >
+        <Lock size={16} aria-hidden="true" />
+        Sign in to search the family directory
+      </button>
+    )
+  }
+
   return (
     <div className="relative">
       <Search

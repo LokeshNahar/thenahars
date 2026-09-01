@@ -4,12 +4,14 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
 import { ageInYears, isoToDdmmyyyy } from '../../lib/dateOfBirth'
+import { maskName } from '../../lib/nameMask'
 import {
   canAddLinkedFamily,
   canAddRelationship,
   canEditPerson,
   type RelationKind,
 } from '../../lib/permissions'
+import { SignInGate } from '../layout/SignInGate'
 import { LinkedFamilyToggle } from '../tree/LinkedFamilyToggle'
 import { LinkedFamilyView } from '../tree/LinkedFamilyView'
 import { AddPersonForm } from './AddPersonForm'
@@ -30,11 +32,7 @@ interface PersonDetailProps {
   onSaved: () => void
 }
 
-/**
- * Every detail beyond a bare name is only shown to signed-in visitors who
- * are themselves a linked family member — anonymous/unmatched browsing
- * sees names only, per the family's privacy preference.
- */
+/** Personal detail rows shown only once past the isLinkedMember gate below. */
 const PRIVATE_FIELD_ROWS: Array<{ key: keyof Person; icon: typeof Phone; label: string }> = [
   { key: 'profession', icon: Briefcase, label: 'Profession' },
   { key: 'qualification', icon: GraduationCap, label: 'Qualification' },
@@ -136,6 +134,23 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
     onSaved()
   }
 
+  if (!isLinkedMember) {
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-3">
+          <PersonAvatar person={person} size="lg" masked />
+          <p className="font-[var(--font-heading)] text-2xl font-bold text-[var(--color-foreground)]">
+            {maskName(person.name)}
+          </p>
+        </div>
+        <SignInGate
+          title="Full profile for family members only"
+          description="Sign in with the Google account linked to your family record to see this person's full details."
+        />
+      </div>
+    )
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -192,41 +207,33 @@ export function PersonDetail({ person, parents, spouses, offspring, people, onSa
                 {person.name}
               </h1>
               <StatusBadge status={person.status} />
-              {isLinkedMember ? (
-                <>
-                  <dl className="mt-2 flex flex-col gap-1.5">
-                    {person.dateOfBirth && (
-                      <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
-                        <Cake size={14} aria-hidden="true" />
-                        <dt className="sr-only">Date of Birth</dt>
-                        <dd>
-                          {isoToDdmmyyyy(person.dateOfBirth)}
-                          {person.status === 'living' && ` (age ${ageInYears(person)})`}
-                        </dd>
-                      </div>
-                    )}
-                    {PRIVATE_FIELD_ROWS.map(({ key, icon: Icon, label }) => {
-                      const value = person[key]
-                      if (!value || typeof value !== 'string') return null
-                      return (
-                        <div
-                          key={key}
-                          className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"
-                        >
-                          <Icon size={14} aria-hidden="true" />
-                          <dt className="sr-only">{label}</dt>
-                          <dd>{value}</dd>
-                        </div>
-                      )
-                    })}
-                  </dl>
-                  <SocialLinks person={person} />
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-[var(--color-muted-foreground)] italic">
-                  Sign in as a family member to see more details.
-                </p>
-              )}
+              <dl className="mt-2 flex flex-col gap-1.5">
+                {person.dateOfBirth && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
+                    <Cake size={14} aria-hidden="true" />
+                    <dt className="sr-only">Date of Birth</dt>
+                    <dd>
+                      {isoToDdmmyyyy(person.dateOfBirth)}
+                      {person.status === 'living' && ` (age ${ageInYears(person)})`}
+                    </dd>
+                  </div>
+                )}
+                {PRIVATE_FIELD_ROWS.map(({ key, icon: Icon, label }) => {
+                  const value = person[key]
+                  if (!value || typeof value !== 'string') return null
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]"
+                    >
+                      <Icon size={14} aria-hidden="true" />
+                      <dt className="sr-only">{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  )
+                })}
+              </dl>
+              <SocialLinks person={person} />
             </div>
           </motion.div>
         )}

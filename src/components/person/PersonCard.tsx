@@ -2,6 +2,7 @@ import { Briefcase, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { isPlaceholder, type Person } from '../../data/schema'
+import { maskName } from '../../lib/nameMask'
 import { TiltCard } from '../ui/TiltCard'
 import { PersonAvatar } from './PersonAvatar'
 import { StatusBadge } from './StatusBadge'
@@ -30,6 +31,7 @@ export function PersonCard({ person, highlight }: PersonCardProps) {
   const { user } = useAuth()
   const isLinkedMember = !!user?.naharId
   const placeholder = isPlaceholder(person)
+  const displayName = isLinkedMember ? person.name : maskName(person.name)
 
   const inner = (
     <div
@@ -39,7 +41,7 @@ export function PersonCard({ person, highlight }: PersonCardProps) {
           : 'glass hover:shadow-[var(--shadow-elevated)]'
       }`}
     >
-      <PersonAvatar person={person} size="md" />
+      <PersonAvatar person={person} size="md" masked={!isLinkedMember} />
       <div className="flex flex-col items-center gap-1">
         <p
           className={`font-[var(--font-heading)] text-base font-semibold ${
@@ -48,7 +50,7 @@ export function PersonCard({ person, highlight }: PersonCardProps) {
               : 'text-[var(--color-card-foreground)]'
           }`}
         >
-          <HighlightedText text={person.name} query={highlight} />
+          {isLinkedMember ? <HighlightedText text={displayName} query={highlight} /> : displayName}
         </p>
         {isLinkedMember && person.profession && (
           <p className="flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">

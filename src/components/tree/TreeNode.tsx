@@ -2,7 +2,9 @@ import { motion } from 'framer-motion'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { memo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import { isPlaceholder, type Person } from '../../data/schema'
+import { maskName } from '../../lib/nameMask'
 import { PersonAvatar } from '../person/PersonAvatar'
 import { StatusBadge } from '../person/StatusBadge'
 import { LinkedFamilyToggle } from './LinkedFamilyToggle'
@@ -49,6 +51,8 @@ function MiniCard({
   onOpenLinkedFamily?: () => void
   inMainTree?: boolean
 }) {
+  const { user } = useAuth()
+  const isLinkedMember = !!user?.naharId
   const placeholder = isPlaceholder(person)
   const [hovering, setHovering] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
@@ -85,13 +89,13 @@ function MiniCard({
           In Main Tree
         </span>
       )}
-      <PersonAvatar person={person} size="sm" />
+      <PersonAvatar person={person} size="sm" masked={!isLinkedMember && !placeholder} />
       <p
         className={`line-clamp-2 text-xs leading-tight font-semibold ${
           placeholder ? 'text-[var(--color-muted-foreground)] italic' : 'text-[var(--color-card-foreground)]'
         }`}
       >
-        {person.name}
+        {placeholder ? person.name : isLinkedMember ? person.name : maskName(person.name)}
       </p>
       <StatusBadge status={person.status} />
     </div>

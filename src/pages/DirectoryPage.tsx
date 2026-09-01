@@ -4,6 +4,7 @@ import { PersonCard } from '../components/person/PersonCard'
 import { SearchBar } from '../components/search/SearchBar'
 import { SearchEmptyState } from '../components/search/SearchEmptyState'
 import { SearchResults } from '../components/search/SearchResults'
+import { useAuth } from '../context/AuthContext'
 import { isPlaceholder } from '../data/schema'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { usePeople } from '../hooks/usePeople'
@@ -11,13 +12,18 @@ import { searchPeople } from '../lib/search'
 
 export function DirectoryPage() {
   const { people, loading } = usePeople()
+  const { user, signIn } = useAuth()
+  const isLinkedMember = !!user?.naharId
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query)
 
-  const results = useMemo(() => searchPeople(people, debouncedQuery), [people, debouncedQuery])
+  const results = useMemo(
+    () => (isLinkedMember ? searchPeople(people, debouncedQuery) : []),
+    [people, debouncedQuery, isLinkedMember],
+  )
   const allMembers = useMemo(() => people.filter((p) => !isPlaceholder(p)), [people])
 
-  const isSearching = debouncedQuery.trim().length > 0
+  const isSearching = isLinkedMember && debouncedQuery.trim().length > 0
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
@@ -41,7 +47,7 @@ export function DirectoryPage() {
         transition={{ duration: 0.5, delay: 0.1 }}
         className="mx-auto mb-12 max-w-xl"
       >
-        <SearchBar value={query} onChange={setQuery} />
+        <SearchBar value={query} onChange={setQuery} disabled={!isLinkedMember} onDisabledClick={signIn} />
       </motion.div>
 
       {loading ? (

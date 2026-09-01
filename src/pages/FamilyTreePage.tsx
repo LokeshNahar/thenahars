@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
+import { SignInGate } from '../components/layout/SignInGate'
 import { FamilyTreeCanvas } from '../components/tree/FamilyTreeCanvas'
 import { useAuth } from '../context/AuthContext'
 import { usePeople } from '../hooks/usePeople'
@@ -7,6 +8,7 @@ export function FamilyTreePage() {
   const { people, loading } = usePeople()
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
+  const isLinkedMember = !!user?.naharId
 
   // Explicit ?focus= wins; otherwise, if you're signed in and linked, the
   // tree auto-frames you — visiting /tree while logged in just works.
@@ -25,6 +27,11 @@ export function FamilyTreePage() {
 
       {loading ? (
         <p className="text-center text-[var(--color-muted-foreground)]">Loading tree…</p>
+      ) : !isLinkedMember ? (
+        <SignInGate
+          title="The tree is for family members"
+          description="Sign in with the Google account linked to your family record to explore the tree."
+        />
       ) : (
         <FamilyTreeCanvas people={people} focusId={focusId} />
       )}

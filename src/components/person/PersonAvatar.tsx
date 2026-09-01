@@ -5,6 +5,8 @@ import type { Person } from '../../data/schema'
 interface PersonAvatarProps {
   person: Person
   size?: 'sm' | 'md' | 'lg'
+  /** True to always show the placeholder icon, hiding a real photo from unmatched visitors. */
+  masked?: boolean
 }
 
 const SIZE_CLASSES: Record<NonNullable<PersonAvatarProps['size']>, string> = {
@@ -19,9 +21,9 @@ const ICON_SIZE: Record<NonNullable<PersonAvatarProps['size']>, number> = {
   lg: 44,
 }
 
-export function PersonAvatar({ person, size = 'md' }: PersonAvatarProps) {
+export function PersonAvatar({ person, size = 'md', masked = false }: PersonAvatarProps) {
   const [errored, setErrored] = useState(false)
-  const showPlaceholder = !person.photo || errored
+  const showPlaceholder = masked || !person.photo || errored
 
   return (
     <div

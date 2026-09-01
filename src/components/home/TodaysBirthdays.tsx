@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion'
 import { PartyPopper } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import type { Person } from '../../data/schema'
 import { ageInYears, isBirthdayToday } from '../../lib/dateOfBirth'
+import { maskName } from '../../lib/nameMask'
 import { PersonAvatar } from '../person/PersonAvatar'
 
 interface TodaysBirthdaysProps {
@@ -10,6 +12,8 @@ interface TodaysBirthdaysProps {
 }
 
 export function TodaysBirthdays({ people }: TodaysBirthdaysProps) {
+  const { user } = useAuth()
+  const isLinkedMember = !!user?.naharId
   const today = new Date()
   const celebrants = people.filter((p) => p.status === 'living' && isBirthdayToday(p, today))
 
@@ -51,10 +55,12 @@ export function TodaysBirthdays({ people }: TodaysBirthdaysProps) {
                 >
                   <div className="relative">
                     <div className="absolute inset-0 -m-1.5 animate-pulse rounded-full bg-[var(--color-accent)]/20 blur-md" />
-                    <PersonAvatar person={person} size="md" />
+                    <PersonAvatar person={person} size="md" masked={!isLinkedMember} />
                   </div>
-                  <p className="text-sm font-semibold text-[var(--color-card-foreground)]">{person.name}</p>
-                  {age != null && (
+                  <p className="text-sm font-semibold text-[var(--color-card-foreground)]">
+                    {isLinkedMember ? person.name : maskName(person.name)}
+                  </p>
+                  {isLinkedMember && age != null && (
                     <p className="text-xs text-[var(--color-muted-foreground)]">Turning {age} today</p>
                   )}
                 </Link>

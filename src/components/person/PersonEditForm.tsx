@@ -4,6 +4,7 @@ import { Loader2, Save, X } from 'lucide-react'
 import { useState } from 'react'
 import type { LifeStatus, Person } from '../../data/schema'
 import { db } from '../../lib/firebase'
+import { validatePhotoUrl } from '../../lib/photoUrl'
 import { OCCUPATIONS, QUALIFICATIONS } from '../../lib/qualifications'
 import { DatePickerField } from '../ui/DatePickerField'
 import { SelectWithOther } from '../ui/SelectWithOther'
@@ -86,6 +87,11 @@ export function PersonEditForm({ person, spouses, onCancel, onSaved }: PersonEdi
     }
     if (!form.name.trim()) {
       setError('Name can’t be empty.')
+      return
+    }
+    const photoError = validatePhotoUrl(form.photo)
+    if (photoError) {
+      setError(photoError)
       return
     }
     if (!db) {
@@ -285,6 +291,9 @@ export function PersonEditForm({ person, spouses, onCancel, onSaved }: PersonEdi
             onChange={(e) => update('photo', e.target.value)}
             placeholder="https://…"
           />
+          <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
+            Direct image links from Google, Imgur, or GitHub only — other hosts aren’t accepted.
+          </p>
         </div>
 
         <div className="sm:col-span-2">

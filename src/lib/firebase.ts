@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check'
-import { getAuth, type Auth } from 'firebase/auth'
+import { browserSessionPersistence, getAuth, setPersistence, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 import { getStorage, type FirebaseStorage } from 'firebase/storage'
 
@@ -28,6 +28,24 @@ const firebaseConfig = {
 export const app: FirebaseApp | null = useFirebase ? initializeApp(firebaseConfig) : null
 export const auth: Auth | null = app ? getAuth(app) : null
 export const db: Firestore | null = app ? getFirestore(app) : null
+
+/**
+ * Session-only persistence: signing in stays valid only for this browser
+ * tab/window session, not indefinitely across restarts (Firebase's default
+ * is browserLocalPersistence, which survives closing the browser entirely).
+ * Closing this security-audit gap (F-05: a stolen or shared device stays
+ * signed in forever) — the full fix is a 5-minute auto-expiring session
+ * with an explicit "Extend Session" action, scoped in
+ * PHONE-OTP-FUTURE-PHASE.md but not yet built; this is the immediate,
+ * no-new-UI narrowing of the same exposure window. Fire-and-forget is safe
+ * here: the Auth SDK queues sign-in calls until persistence resolves, so
+ * nothing downstream needs to await this.
+ */
+if (auth) {
+  setPersistence(auth, browserSessionPersistence).catch((err) => {
+    console.error('Failed to set session-only auth persistence:', err)
+  })
+}
 
 let storageInstance: FirebaseStorage | null = null
 if (app) {

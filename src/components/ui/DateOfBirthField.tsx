@@ -1,5 +1,5 @@
 import { Calendar } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { ddmmyyyyToIso, isoToDdmmyyyy } from '../../lib/dateOfBirth'
 
 interface DateOfBirthFieldProps {
@@ -20,8 +20,28 @@ interface DateOfBirthFieldProps {
 export function DateOfBirthField({ value, onChange, className }: DateOfBirthFieldProps) {
   const textId = useId()
   const dateId = useId()
+  const dateInputRef = useRef<HTMLInputElement>(null)
   const [textValue, setTextValue] = useState(() => (value ? isoToDdmmyyyy(value) : ''))
   const [textError, setTextError] = useState(false)
+
+  function openCalendar() {
+    const input = dateInputRef.current
+    if (!input) return
+    // showPicker() is the reliable way to open a native date input's
+    // calendar programmatically — supported in Chrome/Edge/Safari. Falls
+    // back to focusing the (now-visible, real-sized) input so at least
+    // keyboard/click-to-open still works in browsers without it (Firefox).
+    if ('showPicker' in input) {
+      try {
+        ;(input as HTMLInputElement & { showPicker: () => void }).showPicker()
+        return
+      } catch {
+        // Fall through to focus() below — showPicker() throws if the
+        // input isn't user-activated-clickable in some edge cases.
+      }
+    }
+    input.focus()
+  }
 
   function handleTextChange(next: string) {
     setTextValue(next)
@@ -62,20 +82,29 @@ export function DateOfBirthField({ value, onChange, className }: DateOfBirthFiel
           }`}
         />
       </div>
-      <label
-        htmlFor={dateId}
-        className="flex shrink-0 cursor-pointer items-center justify-center rounded-xl border border-[var(--glass-border)] bg-[var(--color-background)] px-3 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+      <div
+        className="relative flex shrink-0 items-center justify-center rounded-xl border border-[var(--glass-border)] bg-[var(--color-background)] px-3 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
         title="Pick from calendar"
       >
-        <Calendar size={16} aria-hidden="true" />
+        <Calendar size={16} className="pointer-events-none" aria-hidden="true" />
+        {/* Kept at real size and clickable, just visually transparent (not
+            display:none/sr-only) — Chrome refuses to open a native date
+            picker on an input with no real layout box, which is what broke
+            the previous sr-only-label version of this control. Overlaid
+            directly on the calendar icon so a click anywhere on it opens
+            the native picker itself; showPicker() covers keyboard/other
+            activation as a fallback. */}
         <input
           id={dateId}
+          ref={dateInputRef}
           type="date"
           value={value}
           onChange={(e) => handleDateChange(e.target.value)}
-          className="sr-only"
+          onClick={openCalendar}
+          aria-label="Pick date of birth from calendar"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         />
-      </label>
+      </div>
     </div>
   )
 }

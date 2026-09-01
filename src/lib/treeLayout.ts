@@ -8,8 +8,12 @@ export interface PositionedUnit {
   parentId: string | null
 }
 
-const NODE_WIDTH = 220
-const NODE_HEIGHT = 200
+// A couple (primary + one spouse) renders ~252px wide and up to ~142px tall
+// (status badge on a "late" record adds height); these reserve enough
+// per-node slot space that adjacent cards keep a clear gap instead of
+// touching or overlapping — see TreeNode's MiniCard/couple-row markup.
+const NODE_WIDTH = 320
+const NODE_HEIGHT = 280
 
 /**
  * Lays out the currently-expanded FamilyUnit tree using d3's tree algorithm.

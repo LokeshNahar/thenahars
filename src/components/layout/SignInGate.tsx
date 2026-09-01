@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { Lock } from 'lucide-react'
+import { Lock, UserSearch } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { GoogleGlyph } from '../ui/GoogleGlyph'
 
@@ -33,7 +34,7 @@ export function SignInGate({ title, description }: SignInGateProps) {
         </h2>
         <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">{description}</p>
       </div>
-      {!user && (
+      {!user ? (
         <button
           type="button"
           onClick={signIn}
@@ -42,6 +43,16 @@ export function SignInGate({ title, description }: SignInGateProps) {
           <GoogleGlyph />
           Sign in with Google
         </button>
+      ) : (
+        !user.naharId && (
+          <Link
+            to="/claim"
+            className="flex items-center gap-2 rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-[var(--color-accent-foreground)] shadow-[var(--shadow-glow)] transition-[filter] hover:brightness-110"
+          >
+            <UserSearch size={16} aria-hidden="true" />
+            Claim Your Profile
+          </Link>
+        )
       )}
     </motion.div>
   )

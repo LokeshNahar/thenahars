@@ -39,6 +39,11 @@
 //     anchor is bloodline; a married-in anchor's "add parent" must go
 //     through the linked-family-root path. Never a personal field — only
 //     admins can change it after creation.
+//   - `pending_claims/{emailLowercased}` is a self-claim request queue: a
+//     signed-in-but-unmatched visitor submits their name + both parents'
+//     names, the client suggests a matching nahar_id, and an admin reviews
+//     and approves/rejects in AdminPage (approval then does the existing
+//     people_by_email link — this collection has no rights of its own).
 
 rules_version = '2';
 
@@ -260,6 +265,33 @@ service cloud.firestore {
       allow update: if signedInEmail() != null
         && callerPerson() != null
         && request.resource.data.nextSeq == resource.data.nextSeq + 1;
+    }
+
+    // A signed-in-but-unmatched visitor's self-service request to be linked
+    // to an existing Person. Doc id is the claimant's own lowercased email
+    // — at most one claim per email, and only ever created by that same
+    // person (never by someone else on their behalf). Only an admin may
+    // change status/reviewedBy/reviewedAt (the approve/reject action) or
+    // delete a claim (e.g. to clear a rejected one so its owner can retry).
+    // Approving a claim itself just means the admin then does the existing
+    // people_by_email link — this collection carries no elevated rights of
+    // its own, it's purely a request queue for the admin to act on.
+    match /pending_claims/{claimId} {
+      allow read: if isAdmin() || (signedInEmail() != null && claimId == signedInEmail());
+
+      allow create: if signedInEmail() != null
+        && claimId == signedInEmail()
+        && request.resource.data.email == signedInEmail()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.reviewedAt == null
+        && request.resource.data.reviewedBy == null
+        && request.resource.data.submittedAt == request.time
+        && request.resource.data.submittedName is string && request.resource.data.submittedName.size() > 0
+        && request.resource.data.fatherName is string && request.resource.data.fatherName.size() > 0
+        && request.resource.data.motherName is string && request.resource.data.motherName.size() > 0;
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /people_by_email/{email} {

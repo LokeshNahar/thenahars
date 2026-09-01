@@ -69,3 +69,30 @@ export const PLACEHOLDER_NAME = 'Details coming soon'
 export function isPlaceholder(person: Person): boolean {
   return person.name === PLACEHOLDER_NAME
 }
+
+export type ClaimStatus = 'pending' | 'approved' | 'rejected'
+
+/**
+ * A signed-in-but-unmatched visitor's self-service request to be linked to
+ * an existing Person record. Submitted with their own name + both parents'
+ * names; the client suggests matchedNaharId when exactly one Person in the
+ * tree has a name and parents-list that loosely match all three — but an
+ * admin always makes the final call in AdminPage before any email gets
+ * linked, so a wrong or missing match here is never itself a security
+ * boundary, only a lookup convenience.
+ */
+export interface PendingClaim {
+  /** Firestore doc id — the claimant's lowercased email, so at most one open claim exists per email. */
+  id: string
+  email: string
+  submittedName: string
+  fatherName: string
+  motherName: string
+  /** Client-suggested candidate when exactly one Person matched all three names; admin may pick differently. */
+  matchedNaharId: string | null
+  status: ClaimStatus
+  submittedAt: unknown
+  reviewedAt: unknown
+  /** nahar_id of the admin who approved/rejected this claim. */
+  reviewedBy: string | null
+}

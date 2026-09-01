@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sparkles, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 const DISMISS_KEY = 'thenahars-not-in-tree-dismissed'
@@ -34,9 +35,14 @@ export function NotInTreeBanner() {
             <Sparkles size={16} className="shrink-0 text-[var(--color-accent)]" aria-hidden="true" />
             <p className="flex-1 text-[var(--color-foreground)]">
               You&rsquo;re signed in as <span className="font-semibold">{user?.name ?? user?.email}</span>,
-              but not yet linked to a family member. An admin will connect your account soon — feel free to
-              keep browsing in the meantime.
+              but not yet linked to a family member.
             </p>
+            <Link
+              to="/claim"
+              className="shrink-0 rounded-full bg-[var(--color-accent)] px-4 py-1.5 text-xs font-semibold whitespace-nowrap text-[var(--color-accent-foreground)] transition-[filter] hover:brightness-110"
+            >
+              Claim Your Profile
+            </Link>
             <button
               type="button"
               onClick={dismiss}
